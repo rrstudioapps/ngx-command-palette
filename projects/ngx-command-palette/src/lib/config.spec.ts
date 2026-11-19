@@ -44,9 +44,10 @@ describe('resolveConfig', () => {
     expect(resolveConfig({ recent: false }).recent).toBe(false);
   });
 
-  it('has no limit for an empty search unless maxEmptyResults is given', () => {
-    expect(resolveConfig().maxEmptyResults).toBe(Infinity);
+  it('lists up to 100 commands for an empty search unless maxEmptyResults is given', () => {
+    expect(resolveConfig().maxEmptyResults).toBe(100);
     expect(resolveConfig({ maxEmptyResults: 20 }).maxEmptyResults).toBe(20);
+    expect(resolveConfig({ maxEmptyResults: Infinity }).maxEmptyResults).toBe(Infinity);
   });
 
   it('uses the built-in matcher unless a filter is given', () => {

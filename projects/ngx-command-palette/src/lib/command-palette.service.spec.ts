@@ -444,8 +444,15 @@ describe('CommandPaletteService', () => {
     const count = (service: CommandPaletteService) =>
       service.sections().reduce((total, s) => total + s.items.length, 0);
 
-    it('lists everything by default', () => {
+    it('lists the first 100 by default', () => {
       const service = setup({ recent: false });
+      service.register(many(300));
+      service.open();
+      expect(count(service)).toBe(100);
+    });
+
+    it('lists everything with Infinity', () => {
+      const service = setup({ recent: false, maxEmptyResults: Infinity });
       service.register(many(300));
       service.open();
       expect(count(service)).toBe(300);

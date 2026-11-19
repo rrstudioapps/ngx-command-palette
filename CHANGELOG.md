@@ -7,10 +7,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
-- `maxEmptyResults` option to list only the first commands while the search is empty, so the palette opens quickly with thousands of commands (off by default).
+- `maxEmptyResults` option (default 100) to list only the first commands while the search is empty, so the palette opens quickly with thousands of commands.
 
 ### Changed
 
+- **Behavior change:** with an empty search at most 100 commands are listed (the rest is found by typing). Set `maxEmptyResults: Infinity` to list them all as before. Apps with fewer than 100 commands are not affected.
 - Faster search with thousands of commands (up to about 9 times faster, with the same results): the scoring tables are reused and commands that cannot match are rejected early.
 
 ## [0.2.0] - 2026-11-19

@@ -142,7 +142,7 @@ injectCommandProvider({
 | `recent` | `{ max?, storageKey? } \| false` | `{ max: 5, storageKey: 'rr-cp:recent' }` | "Recent" section shown when the query is empty. |
 | `debounceMs` | `number` | `200` | Debounce for async providers. |
 | `maxResults` | `number` | `50` | Max local results for a non-empty query. |
-| `maxEmptyResults` | `number` | no limit | Max commands listed when the search is empty (recents not counted). The rest is still found by typing. See [Many commands](#many-commands). |
+| `maxEmptyResults` | `number` | `100` | Max commands listed when the search is empty (recents not counted). The rest is still found by typing. See [Many commands](#many-commands). |
 | `filter` | `(query, command) => { score, indices } \| null` | built-in fuzzy search | Your own matching and ranking of local commands. See [Custom search](#custom-search). |
 | `labels` | `Partial<CommandPaletteLabels>` | English | All texts, for translations: `placeholder`, `dialog`, `listbox`, `empty`, `loading`, `recent`, `defaultGroup`, `results` (`'{count} results'`), `closeHint`, `back`, `level` (`'{name}: {count} results'`), `submenu`. |
 
@@ -150,11 +150,12 @@ injectCommandProvider({
 
 Searching is cheap: with 5,000 commands a keystroke costs a few tens of milliseconds. With an empty search,
 though, every command is rendered, which takes roughly 0.2 s for a thousand commands and 0.6 s for five
-thousand on a slow virtual server. Set `maxEmptyResults` to list only the first commands (in registration
-order) until the user types: opening then takes the same time whatever the number of commands.
+thousand on a slow virtual server. That is why, until the user types, only the first `maxEmptyResults`
+commands are listed (100 by default, in registration order; recents not counted). The rest is found by
+searching, and opening takes the same time whatever the number of commands.
 
 ```ts
-provideCommandPalette({ maxEmptyResults: 100 });
+provideCommandPalette({ maxEmptyResults: Infinity }); // list them all
 ```
 
 For very large catalogs, also consider [sub-palettes](#sub-palettes) or an async [provider](#commandprovider).
