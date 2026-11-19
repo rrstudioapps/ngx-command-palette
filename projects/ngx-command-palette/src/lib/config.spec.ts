@@ -44,6 +44,11 @@ describe('resolveConfig', () => {
     expect(resolveConfig({ recent: false }).recent).toBe(false);
   });
 
+  it('has no limit for an empty search unless maxEmptyResults is given', () => {
+    expect(resolveConfig().maxEmptyResults).toBe(Infinity);
+    expect(resolveConfig({ maxEmptyResults: 20 }).maxEmptyResults).toBe(20);
+  });
+
   it('uses the built-in matcher unless a filter is given', () => {
     expect(resolveConfig().filter).toBe(matchCommand);
     const filter = () => null;

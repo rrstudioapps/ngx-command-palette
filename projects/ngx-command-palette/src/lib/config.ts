@@ -52,6 +52,12 @@ export interface CommandPaletteConfig {
   readonly debounceMs: number;
   /** Max results of local commands for a non-empty query. Default: 50. */
   readonly maxResults: number;
+  /**
+   * Max commands listed when the search is empty (the "Recent" section is not counted). The rest is
+   * still found by searching. Default: no limit. Useful with thousands of commands, where drawing
+   * every row slows down the opening.
+   */
+  readonly maxEmptyResults: number;
   /** Matching and ranking of local commands for a non-empty query. Default: the built-in fuzzy search. */
   readonly filter: CommandFilter;
   readonly labels: CommandPaletteLabels;
@@ -82,6 +88,7 @@ export const DEFAULT_COMMAND_PALETTE_CONFIG: CommandPaletteConfig = {
   recent: { max: 5, storageKey: 'rr-cp:recent' },
   debounceMs: 200,
   maxResults: 50,
+  maxEmptyResults: Infinity,
   filter: matchCommand,
   labels: DEFAULT_COMMAND_PALETTE_LABELS,
 };

@@ -438,6 +438,56 @@ describe('CommandPaletteService', () => {
     });
   });
 
+  describe('maxEmptyResults', () => {
+    const many = (n: number): Command[] =>
+      Array.from({ length: n }, (_, i) => ({ id: `c${i}`, label: `Command ${i}`, run: noop }));
+    const count = (service: CommandPaletteService) =>
+      service.sections().reduce((total, s) => total + s.items.length, 0);
+
+    it('lists everything by default', () => {
+      const service = setup({ recent: false });
+      service.register(many(300));
+      service.open();
+      expect(count(service)).toBe(300);
+    });
+
+    it('limits the list when the search is empty, in registration order', () => {
+      const service = setup({ recent: false, maxEmptyResults: 5 });
+      service.register(many(300));
+      service.open();
+      expect(labels(service)).toEqual([
+        ['Commands', ['Command 0', 'Command 1', 'Command 2', 'Command 3', 'Command 4']],
+      ]);
+    });
+
+    it('does not limit the search: the rest is found by typing', () => {
+      const service = setup({ recent: false, maxEmptyResults: 5, maxResults: 50 });
+      service.register(many(300));
+      service.open('command 299');
+      expect(service.sections()[0].items[0].command.id).toBe('c299');
+    });
+
+    it('does not count hidden commands or the recents', async () => {
+      const service = setup({ maxEmptyResults: 2 });
+      const list: Command[] = [{ id: 'h', label: 'Hidden', hidden: true, run: noop }, ...many(10)];
+      service.register(list);
+      await service.execute(list[5]);
+      service.open();
+      expect(labels(service)).toEqual([
+        ['Recent', ['Command 4']],
+        ['Commands', ['Command 0', 'Command 1']],
+      ]);
+    });
+
+    it('applies inside a sub-palette too', async () => {
+      const service = setup({ recent: false, maxEmptyResults: 3 });
+      service.register([{ id: 'p', label: 'P', children: many(20) }]);
+      service.open();
+      await service.execute(service.commands()[0]);
+      expect(count(service)).toBe(3);
+    });
+  });
+
   describe('custom filter', () => {
     const commands: Command[] = [
       { id: 'a', label: 'Open settings', run: noop },

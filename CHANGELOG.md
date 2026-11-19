@@ -5,6 +5,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `maxEmptyResults` option to list only the first commands while the search is empty, so the palette opens quickly with thousands of commands (off by default).
+
 ### Changed
 
 - Faster search with thousands of commands (up to about 9 times faster, with the same results): the scoring tables are reused and commands that cannot match are rejected early.

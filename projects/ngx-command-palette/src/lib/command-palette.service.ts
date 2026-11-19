@@ -266,8 +266,10 @@ export class CommandPaletteService {
       const recent = topLevel ? this.recentResults(commands) : [];
       if (recent.length)
         sections.push({ id: RECENT_SECTION_ID, label: this.config.labels.recent, items: recent });
+      let listed = 0;
       for (const command of commands) {
         if (isHidden(command)) continue;
+        if (listed++ >= this.config.maxEmptyResults) break;
         const group = command.group ?? defaultGroup;
         push(group, toResult(command, `g:${group}:${command.id}`, 0, []));
       }
