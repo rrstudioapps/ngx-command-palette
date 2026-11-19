@@ -301,4 +301,123 @@ describe('CommandPaletteComponent', () => {
     keydown(input(), 'Enter');
     expect(service.isOpen()).toBe(true);
   });
+
+  describe('sub-palettes', () => {
+    async function setupTree() {
+      await setup();
+      service.register([
+        {
+          id: 'theme',
+          label: 'Theme',
+          group: 'Two',
+          children: [
+            { id: 'dark', label: 'Dark', run: () => void runs.push('dark') },
+            { id: 'light', label: 'Light', run: () => void runs.push('light') },
+            {
+              id: 'colors',
+              label: 'Colors',
+              children: [{ id: 'red', label: 'Red', run: () => void runs.push('red') }],
+            },
+          ],
+        },
+      ]);
+      await open();
+    }
+    const live = () => q('[aria-live="polite"]')!.textContent!.trim();
+    const labelsShown = () => options().map((o) => q('#' + o.id + ' .rr-cp-label')!.textContent);
+
+    async function enter(query: string) {
+      service.setQuery(query);
+      await fixture.whenStable();
+      keydown(input(), 'Enter');
+      await fixture.whenStable();
+    }
+
+    it('marks the parents with a chevron and a hint for screen readers', async () => {
+      await setupTree();
+      const theme = options()[3];
+      expect(theme.querySelector('.rr-cp-chevron')).not.toBeNull();
+      expect(theme.textContent).toContain('opens a sub-palette');
+      expect(options()[0].querySelector('.rr-cp-chevron')).toBeNull();
+    });
+
+    it('opens a level with Enter, shows the path and announces it', async () => {
+      await setupTree();
+      expect(q('.rr-cp-path')).toBeNull();
+      await enter('theme');
+      expect(service.isOpen()).toBe(true);
+      expect(q('.rr-cp-path-current')!.textContent!.trim()).toBe('Theme');
+      expect(q('.rr-cp-path-current')!.getAttribute('aria-current')).toBe('page');
+      expect(labelsShown()).toEqual(['Dark', 'Light', 'Colors']);
+      expect(input().value).toBe('');
+      expect(document.activeElement).toBe(input());
+      expect(live()).toBe('Theme: 3 results');
+    });
+
+    it('opens a level with a click', async () => {
+      await setupTree();
+      service.setQuery('theme');
+      await fixture.whenStable();
+      options()[0].click();
+      await fixture.whenStable();
+      expect(labelsShown()).toEqual(['Dark', 'Light', 'Colors']);
+    });
+
+    it('runs a child and closes everything', async () => {
+      await setupTree();
+      await enter('theme');
+      await enter('dark');
+      expect(runs).toEqual(['dark']);
+      expect(service.isOpen()).toBe(false);
+      await open();
+      expect(q('.rr-cp-path')).toBeNull();
+    });
+
+    it('goes back with Backspace only when the search is empty', async () => {
+      await setupTree();
+      await enter('theme');
+      service.setQuery('da');
+      await fixture.whenStable();
+      const kept = keydown(input(), 'Backspace');
+      expect(kept.defaultPrevented).toBe(false);
+      expect(service.path()).toHaveLength(1);
+      service.setQuery('');
+      await fixture.whenStable();
+      const left = keydown(input(), 'Backspace');
+      await fixture.whenStable();
+      expect(left.defaultPrevented).toBe(true);
+      expect(q('.rr-cp-path')).toBeNull();
+      expect(options()).toHaveLength(4);
+      // At the top level Backspace is just a key
+      expect(keydown(input(), 'Backspace').defaultPrevented).toBe(false);
+    });
+
+    it('closes everything with Escape and reopens at the top level', async () => {
+      await setupTree();
+      await enter('theme');
+      keydown(input(), 'Escape');
+      await fixture.whenStable();
+      expect(service.isOpen()).toBe(false);
+      await open();
+      expect(q('.rr-cp-path')).toBeNull();
+      expect(options()).toHaveLength(4);
+    });
+
+    it('goes back with the buttons of the path and keeps the focus in the search field', async () => {
+      await setupTree();
+      await enter('theme');
+      await enter('colors');
+      expect(labelsShown()).toEqual(['Red']);
+      expect(live()).toBe('Colors: 1 results');
+      (q('.rr-cp-path-step') as HTMLElement).click();
+      await fixture.whenStable();
+      expect(service.path().map((p) => p.id)).toEqual(['theme']);
+      expect(document.activeElement).toBe(input());
+      (q('.rr-cp-path-back') as HTMLElement).click();
+      await fixture.whenStable();
+      expect(q('.rr-cp-path')).toBeNull();
+      expect(document.activeElement).toBe(input());
+      expect(q('.rr-cp-path-back')).toBeNull();
+    });
+  });
 });

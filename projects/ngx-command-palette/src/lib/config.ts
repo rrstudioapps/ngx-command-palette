@@ -20,6 +20,12 @@ export interface CommandPaletteLabels {
   /** Screen reader announcement, `{count}` is replaced by the number of results. */
   readonly results: string;
   readonly closeHint: string;
+  /** Label of the button that goes back one level of a sub-palette. */
+  readonly back: string;
+  /** Screen reader announcement when a sub-palette is opened; `{name}` and `{count}` are replaced. */
+  readonly level: string;
+  /** Screen reader hint added to a command that opens a sub-palette. */
+  readonly submenu: string;
 }
 
 /**
@@ -65,6 +71,9 @@ export const DEFAULT_COMMAND_PALETTE_LABELS: CommandPaletteLabels = {
   defaultGroup: 'Commands',
   results: '{count} results',
   closeHint: 'Esc',
+  back: 'Back',
+  level: '{name}: {count} results',
+  submenu: 'opens a sub-palette',
 };
 
 export const DEFAULT_COMMAND_PALETTE_CONFIG: CommandPaletteConfig = {

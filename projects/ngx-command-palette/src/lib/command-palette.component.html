@@ -8,6 +8,39 @@
       [attr.aria-label]="labels.dialog"
       (keydown)="onKeydown($event)"
     >
+      @if (service.path(); as path) {
+        @if (path.length) {
+          <nav class="rr-cp-path">
+            <button
+              type="button"
+              class="rr-cp-path-back"
+              [attr.aria-label]="labels.back"
+              (click)="onBack(1)"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                <path
+                  d="m15 6-6 6 6 6"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            @for (parent of path; track parent.id; let i = $index; let last = $last) {
+              @if (last) {
+                <span class="rr-cp-path-current" aria-current="page">{{ parent.label }}</span>
+              } @else {
+                <button type="button" class="rr-cp-path-step" (click)="onBack(path.length - 1 - i)">
+                  {{ parent.label }}
+                </button>
+                <span class="rr-cp-path-sep" aria-hidden="true">›</span>
+              }
+            }
+          </nav>
+        }
+      }
       <div class="rr-cp-search">
         <svg
           class="rr-cp-search-icon"
@@ -103,6 +136,10 @@
                       <span class="rr-cp-description">{{ row.item.command.description }}</span>
                     }
                   </span>
+                  @if (hasChildren(row.item.command)) {
+                    <span class="rr-cp-sr-only">, {{ labels.submenu }}</span>
+                    <span class="rr-cp-chevron" aria-hidden="true">›</span>
+                  }
                   @if (row.item.command.shortcut?.length) {
                     <span class="rr-cp-shortcut" aria-hidden="true">
                       @for (key of row.item.command.shortcut; track $index) {

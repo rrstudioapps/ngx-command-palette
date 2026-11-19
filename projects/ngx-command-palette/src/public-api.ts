@@ -14,6 +14,7 @@ export type {
   CommandSection,
   CommandSubscribable,
   HighlightSegment,
+  ParentCommand,
   RouteCommand,
 } from './lib/command.model';
 export {

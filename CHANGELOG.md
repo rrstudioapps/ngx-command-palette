@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows
 
 - `filter` option of `provideCommandPalette()` to replace the matching and ranking of local commands.
 - `hidden` property on commands (boolean, function or signal) to leave a command out of the list, the search and the recents.
+- Sub-palettes: a command with `children` opens a nested list, with a path, a back button, Backspace to go back and screen reader announcements. New `ParentCommand` type, `CommandPaletteService.path` and `back()`, and the `back`, `level` and `submenu` labels.
 
 ## [0.1.0] - 2026-11-19
 

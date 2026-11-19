@@ -270,6 +270,174 @@ describe('CommandPaletteService', () => {
     });
   });
 
+  describe('sub-palettes', () => {
+    const tree = (): Command[] => [
+      {
+        id: 'theme',
+        label: 'Theme',
+        children: [
+          { id: 'dark', label: 'Dark', run: noop },
+          { id: 'light', label: 'Light', run: noop },
+          { id: 'colors', label: 'Colors', children: [{ id: 'red', label: 'Red', run: noop }] },
+        ],
+      },
+      { id: 'home', label: 'Home', route: '/' },
+    ];
+    const ids = (service: CommandPaletteService) => service.path().map((p) => p.id);
+
+    it('opens the children of a parent without closing, and clears the search', async () => {
+      const service = setup();
+      service.register(tree());
+      service.open('the');
+      await service.execute(service.commands()[0]);
+      expect(service.isOpen()).toBe(true);
+      expect(service.query()).toBe('');
+      expect(ids(service)).toEqual(['theme']);
+      expect(labels(service)).toEqual([['Commands', ['Dark', 'Light', 'Colors']]]);
+    });
+
+    it('searches only inside the current level', async () => {
+      const service = setup();
+      service.register(tree());
+      service.open();
+      await service.execute(service.commands()[0]);
+      service.setQuery('home');
+      expect(service.sections()).toEqual([]);
+      service.setQuery('da');
+      expect(labels(service)).toEqual([['Commands', ['Dark']]]);
+    });
+
+    it('goes back one or more levels and clears the search', async () => {
+      const service = setup();
+      service.register(tree());
+      service.open();
+      const theme = service.commands()[0];
+      await service.execute(theme);
+      await service.execute(theme.children![2]);
+      expect(ids(service)).toEqual(['theme', 'colors']);
+      expect(labels(service)).toEqual([['Commands', ['Red']]]);
+      service.setQuery('r');
+      expect(service.back()).toBe(true);
+      expect(ids(service)).toEqual(['theme']);
+      expect(service.query()).toBe('');
+      await service.execute(theme.children![2]);
+      expect(service.back(2)).toBe(true);
+      expect(ids(service)).toEqual([]);
+      expect(labels(service)[0][1]).toEqual(['Theme', 'Home']);
+      expect(service.back()).toBe(false);
+      expect(service.back(0)).toBe(false);
+    });
+
+    it('starts at the top level every time it opens', async () => {
+      const service = setup();
+      service.register(tree());
+      service.open();
+      await service.execute(service.commands()[0]);
+      service.close();
+      expect(ids(service)).toEqual([]);
+      service.open();
+      await service.execute(service.commands()[0]);
+      service.open('x');
+      expect(ids(service)).toEqual([]);
+    });
+
+    it('does not enter a disabled parent', async () => {
+      const service = setup();
+      service.register([{ id: 'p', label: 'P', disabled: true, children: [] }]);
+      service.open();
+      await service.execute(service.commands()[0]);
+      expect(ids(service)).toEqual([]);
+    });
+
+    it('applies hidden to the children', async () => {
+      const service = setup();
+      service.register([
+        {
+          id: 'p',
+          label: 'P',
+          children: [
+            { id: 'a', label: 'A', run: noop },
+            { id: 'b', label: 'B', hidden: true, run: noop },
+          ],
+        },
+      ]);
+      service.open();
+      await service.execute(service.commands()[0]);
+      expect(labels(service)).toEqual([['Commands', ['A']]]);
+    });
+
+    it('follows the registered commands: removing the parent closes its level', async () => {
+      const service = setup();
+      const remove = service.register(tree());
+      service.open();
+      await service.execute(service.commands()[0]);
+      expect(ids(service)).toEqual(['theme']);
+      remove();
+      expect(ids(service)).toEqual([]);
+      expect(service.sections()).toEqual([]);
+    });
+
+    it('does not save parents in the recents, but shows the saved children at the top level', async () => {
+      const service = setup();
+      service.register(tree());
+      service.open();
+      const theme = service.commands()[0];
+      await service.execute(theme);
+      expect(labels(service)[0][0]).toBe('Commands');
+      await service.execute(theme.children![0]);
+      expect(service.isOpen()).toBe(false);
+      service.open();
+      expect(labels(service)).toEqual([
+        ['Recent', ['Dark']],
+        ['Commands', ['Theme', 'Home']],
+      ]);
+    });
+
+    it('hides the recents of a hidden parent and shows no recents inside a level', async () => {
+      const service = setup();
+      const hidden = signal(false);
+      const list: Command[] = [
+        { id: 'p', label: 'P', hidden, children: [{ id: 'a', label: 'A', run: noop }] },
+        { id: 'z', label: 'Z', run: noop },
+      ];
+      service.register(list);
+      await service.execute(list[0].children![0]);
+      service.open();
+      expect(service.sections()[0].label).toBe('Recent');
+      hidden.set(true);
+      expect(labels(service)).toEqual([['Commands', ['Z']]]);
+      hidden.set(false);
+      await service.execute(list[0]);
+      expect(labels(service)).toEqual([['Commands', ['A']]]);
+    });
+
+    it('pauses the async providers inside a level and resumes them at the top level', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      service.register(tree());
+      const search = vi.fn(async () => [{ id: 'r', label: 'Remote', route: '/r' }] as Command[]);
+      service.registerProvider({ id: 'p', group: 'Remote', search });
+      service.open('a');
+      await service.execute(service.commands()[0]);
+      service.setQuery('da');
+      await vi.advanceTimersByTimeAsync(500);
+      expect(search).not.toHaveBeenCalled();
+      expect(service.loading()).toBe(false);
+      expect(labels(service)).toEqual([['Commands', ['Dark']]]);
+      service.back();
+      service.setQuery('re');
+      await vi.advanceTimersByTimeAsync(100);
+      expect(search).toHaveBeenCalledTimes(1);
+      expect(labels(service)).toContainEqual(['Remote', ['Remote']]);
+    });
+
+    it('explains that only registered commands can have children', async () => {
+      const service = setup();
+      const fromApi: Command = { id: 'x', label: 'X', children: [] };
+      await expect(service.execute(fromApi)).rejects.toThrow('registered commands');
+    });
+  });
+
   describe('custom filter', () => {
     const commands: Command[] = [
       { id: 'a', label: 'Open settings', run: noop },

@@ -39,15 +39,27 @@ export interface RouteCommand extends CommandBase {
   readonly route: string | readonly unknown[];
   readonly navigationExtras?: NavigationExtras;
   readonly run?: never;
+  readonly children?: never;
 }
 
 /** A command that runs a function. */
 export interface ActionCommand extends CommandBase {
   readonly run: (context: CommandRunContext) => void | Promise<unknown>;
   readonly route?: never;
+  readonly children?: never;
 }
 
-export type Command = RouteCommand | ActionCommand;
+/**
+ * A command that opens a sub-palette: selecting it lists `children` (searched on their own)
+ * instead of running something. Children can have children too.
+ */
+export interface ParentCommand extends CommandBase {
+  readonly children: readonly Command[];
+  readonly route?: never;
+  readonly run?: never;
+}
+
+export type Command = RouteCommand | ActionCommand | ParentCommand;
 
 /** Minimal subscribable shape, so the library does not depend on RxJS. */
 export interface CommandSubscribable<T> {

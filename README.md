@@ -143,7 +143,7 @@ injectCommandProvider({
 | `debounceMs` | `number` | `200` | Debounce for async providers. |
 | `maxResults` | `number` | `50` | Max local results for a non-empty query. |
 | `filter` | `(query, command) => { score, indices } \| null` | built-in fuzzy search | Your own matching and ranking of local commands. See [Custom search](#custom-search). |
-| `labels` | `Partial<CommandPaletteLabels>` | English | All texts, for translations: `placeholder`, `dialog`, `listbox`, `empty`, `loading`, `recent`, `defaultGroup`, `results` (`'{count} results'`), `closeHint`. |
+| `labels` | `Partial<CommandPaletteLabels>` | English | All texts, for translations: `placeholder`, `dialog`, `listbox`, `empty`, `loading`, `recent`, `defaultGroup`, `results` (`'{count} results'`), `closeHint`, `back`, `level` (`'{name}: {count} results'`), `submenu`. |
 
 ### Custom search
 
@@ -164,6 +164,32 @@ provideCommandPalette({
 `filter` only applies to local commands with a non-empty query. Results of async providers keep the order
 returned by your API. To build on the default behavior, call the exported `matchCommand(query, command)`.
 
+### Sub-palettes
+
+Give a command `children` and selecting it lists those commands instead of running something. The path of
+opened parents shows above the search field, and the search only looks inside the current level:
+
+```ts
+injectCommands([
+  {
+    id: 'theme',
+    label: 'Change theme',
+    keywords: ['appearance'],
+    children: [
+      { id: 'theme-light', label: 'Light', run: () => setTheme('light') },
+      { id: 'theme-dark', label: 'Dark', run: () => setTheme('dark') },
+    ],
+  },
+]);
+```
+
+- **Backspace** on an empty search, the back button or a step of the path goes back; **Esc** closes the whole palette.
+- Children can have children. They support `hidden` and `disabled` like any command.
+- Running a child saves it in the recents, so it shows up at the top level afterwards. Parents are never saved.
+- Async providers search the top level only, and only registered commands can have `children`
+  (not the results of a provider).
+- Screen readers hear the level name and the number of results when a sub-palette opens.
+
 ### `Command`
 
 | Field | Type | Description |
@@ -176,6 +202,7 @@ returned by your API. To build on the default behavior, call the exported `match
 | `shortcut` | `string[]?` | Keys shown on the right, e.g. `['⌘', 'S']`. Display only. |
 | `keywords` | `string[]?` | Extra search terms, not shown. |
 | `disabled` | `boolean?` | Shown but not selectable. |
+| `children` | `Command[]?` | Makes it a parent: selecting it opens a sub-palette with these commands instead of running something. See [Sub-palettes](#sub-palettes). |
 | `hidden` | `boolean \| (() => boolean)?` | Not listed and not searched. A function or a signal hides it depending on your app state, e.g. `hidden: () => !user()`. |
 | `route` + `navigationExtras` | `string \| any[]`, `NavigationExtras?` | Navigate with the Angular router… |
 | `run` | `(ctx: { query }) => void \| Promise` | …or run a function. |
@@ -185,7 +212,9 @@ returned by your API. To build on the default behavior, call the exported `match
 | Member | Description |
 | --- | --- |
 | `isOpen`, `query`, `loading` | Read-only signals. |
-| `commands`, `sections` | Registered commands and the filtered, grouped results (signals). |
+| `commands`, `sections` | Registered commands and the filtered, grouped results of the current level (signals). |
+| `path` | The sub-palettes currently open, outermost first (signal). |
+| `back(levels?)` | Goes back one or more levels of a sub-palette; returns `false` at the top level. |
 | `open(query?)`, `close()`, `toggle()` | Open/close programmatically (e.g. from a "Search…" button). |
 | `setQuery(query)` | Change the search text. |
 | `register(commands \| signal, destroyRef?)` | Returns an unregister function. Inside an injection context it unregisters on destroy. |

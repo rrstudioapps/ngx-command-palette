@@ -91,6 +91,49 @@
   border-bottom: 1px solid var(--rr-cp-border);
 }
 
+/* Sub-palettes: the path of the opened parents, above the search field */
+.rr-cp-path {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px 0;
+  color: var(--rr-cp-muted);
+  font-size: 0.8125rem;
+}
+
+.rr-cp-path button {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.rr-cp-path button:hover {
+  background: var(--rr-cp-item-active-bg);
+  color: var(--rr-cp-fg);
+}
+
+.rr-cp-path button:focus-visible {
+  outline: 2px solid var(--rr-cp-accent);
+  outline-offset: 1px;
+}
+
+.rr-cp-path-current {
+  padding: 2px 6px;
+  color: var(--rr-cp-fg);
+  font-weight: 600;
+}
+
+.rr-cp-chevron {
+  flex: none;
+  color: var(--rr-cp-muted);
+}
+
 .rr-cp-search-icon {
   flex: none;
   color: var(--rr-cp-muted);

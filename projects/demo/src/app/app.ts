@@ -93,6 +93,33 @@ export class App {
             run: () => this.themeService.toggle(),
           },
           {
+            id: 'appearance',
+            label: 'Appearance…',
+            description: 'Sub-palette: theme and density',
+            group: 'Preferences',
+            icon: icon.get('settings'),
+            keywords: ['density', 'compact', 'colors'],
+            children: [
+              {
+                id: 'appearance-light',
+                label: 'Light theme',
+                run: () => this.themeService.theme.set('light'),
+              },
+              {
+                id: 'appearance-dark',
+                label: 'Dark theme',
+                run: () => this.themeService.theme.set('dark'),
+              },
+              {
+                id: 'appearance-compact',
+                label: this.themeService.compact()
+                  ? 'Turn compact mode off'
+                  : 'Turn compact mode on',
+                run: () => this.themeService.compact.update((c) => !c),
+              },
+            ],
+          },
+          {
             id: 'copy-install',
             label: 'Copy install command',
             description: 'npm i @rrstudioapps/ngx-command-palette',

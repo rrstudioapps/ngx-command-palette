@@ -20,6 +20,7 @@ import type {
   CommandResult,
   CommandSection,
   CommandSubscribable,
+  ParentCommand,
 } from './command.model';
 import { COMMAND_PALETTE_CONFIG, type CommandPaletteRecentOptions } from './config';
 import { fuzzyMatch, highlightSegments } from './fuzzy';
@@ -68,12 +69,35 @@ export class CommandPaletteService {
   private readonly providerState = signal<ReadonlyMap<string, ProviderState>>(new Map());
   private readonly recents = signal<readonly RecentEntry[]>(this.recentStore?.load() ?? []);
   private readonly pending = new Map<string, PendingRequest>();
+  private readonly pathIds = signal<readonly string[]>([]);
   private returnFocus: HTMLElement | null = null;
 
   /** Whether the palette is open. */
   readonly isOpen = this._isOpen.asReadonly();
   /** Current search text. */
   readonly query = this._query.asReadonly();
+
+  /**
+   * Sub-palettes currently open, outermost first (empty at the top level). It follows the registered
+   * commands: if a parent is removed or replaced while open, the path shrinks to what still exists.
+   */
+  readonly path: Signal<readonly ParentCommand[]> = computed(() => {
+    const path: ParentCommand[] = [];
+    let level: readonly Command[] = this.commands();
+    for (const id of this.pathIds()) {
+      const parent = level.find((c): c is ParentCommand => c.id === id && isParent(c));
+      if (!parent) break;
+      path.push(parent);
+      level = parent.children;
+    }
+    return path;
+  });
+
+  /** The commands of the level being shown: the top level or the children of the last parent. */
+  private readonly levelCommands: Signal<readonly Command[]> = computed(() => {
+    const path = this.path();
+    return path.length ? path[path.length - 1].children : this.commands();
+  });
 
   /** All registered (synchronous) commands. When two share an id, the last registered wins. */
   readonly commands: Signal<readonly Command[]> = computed(() => {
@@ -108,6 +132,7 @@ export class CommandPaletteService {
           : null;
     }
     this._isOpen.set(true);
+    this.pathIds.set([]);
     this.setQuery(query);
   }
 
@@ -117,6 +142,7 @@ export class CommandPaletteService {
     this._isOpen.set(false);
     this.cancelAll();
     this._query.set('');
+    this.pathIds.set([]);
     this.providerState.set(new Map());
     const target = this.returnFocus;
     this.returnFocus = null;
@@ -132,6 +158,18 @@ export class CommandPaletteService {
   setQuery(query: string): void {
     this._query.set(query);
     if (this._isOpen()) this.scheduleProviders();
+  }
+
+  /**
+   * Goes back `levels` levels of a sub-palette (one by default) and clears the search.
+   * Returns `false`, doing nothing, when the top level is already shown.
+   */
+  back(levels = 1): boolean {
+    const path = this.path();
+    if (!path.length || levels < 1) return false;
+    this.pathIds.set(path.slice(0, Math.max(0, path.length - levels)).map((c) => c.id));
+    this.setQuery('');
+    return true;
   }
 
   /**
@@ -153,7 +191,7 @@ export class CommandPaletteService {
   /** Registers an async provider. Same lifetime rules as {@link register}. */
   registerProvider(provider: CommandProvider, destroyRef?: DestroyRef): () => void {
     this.providers.update((list) => [...list.filter((p) => p.id !== provider.id), provider]);
-    if (this._isOpen()) this.scheduleProvider(provider, this._query());
+    if (this._isOpen() && !this.pathIds().length) this.scheduleProvider(provider, this._query());
     const remove = () => {
       if (!this.providers().includes(provider)) return;
       this.cancel(provider.id);
@@ -170,6 +208,17 @@ export class CommandPaletteService {
   /** Executes a command: saves it in the recents, closes the palette, then navigates or runs it. */
   async execute(command: Command): Promise<void> {
     if (command.disabled) return;
+    if (isParent(command)) {
+      if (!this.levelCommands().some((c) => c.id === command.id)) {
+        throw new Error('ngx-command-palette: only registered commands can have children');
+      }
+      // Providers search the top level only: drop their requests and results while inside a sub-palette
+      this.cancelAll();
+      this.providerState.set(new Map());
+      this.pathIds.update((ids) => [...ids, command.id]);
+      this.setQuery('');
+      return;
+    }
     const query = this._query();
     if (this.recentStore) this.recents.set(this.recentStore.add(command, this.recents()));
     this.close();
@@ -203,7 +252,7 @@ export class CommandPaletteService {
 
   private buildSections(query: string): CommandSection[] {
     const defaultGroup = this.config.labels.defaultGroup;
-    const commands = this.commands();
+    const commands = this.levelCommands();
     const groups = new Map<string, CommandResult[]>();
     const push = (group: string, result: CommandResult) => {
       const list = groups.get(group);
@@ -212,8 +261,9 @@ export class CommandPaletteService {
     };
     const sections: CommandSection[] = [];
 
+    const topLevel = !this.pathIds().length;
     if (!query) {
-      const recent = this.recentResults(commands);
+      const recent = topLevel ? this.recentResults(commands) : [];
       if (recent.length)
         sections.push({ id: RECENT_SECTION_ID, label: this.config.labels.recent, items: recent });
       for (const command of commands) {
@@ -240,7 +290,7 @@ export class CommandPaletteService {
 
     // Async results: server order, highlighted when the label matches
     const states = this.providerState();
-    for (const provider of this.providers()) {
+    for (const provider of topLevel ? this.providers() : []) {
       const state = states.get(provider.id);
       if (!state?.items.length) continue;
       const items = state.items
@@ -261,7 +311,7 @@ export class CommandPaletteService {
 
   private recentResults(commands: readonly Command[]): CommandResult[] {
     if (!this.recentStore) return [];
-    const byId = new Map(commands.map((c) => [c.id, c]));
+    const byId = new Map(descendants(commands).map((c) => [c.id, c]));
     const results: CommandResult[] = [];
     for (const entry of this.recents()) {
       // Still registered, or rebuilt from the saved route (e.g. a customer from an API)
@@ -284,6 +334,7 @@ export class CommandPaletteService {
   }
 
   private scheduleProviders(): void {
+    if (this.pathIds().length) return;
     const query = this._query();
     for (const provider of this.providers()) this.scheduleProvider(provider, query);
   }
@@ -363,6 +414,21 @@ function toResult(
   indices: readonly number[],
 ): CommandResult {
   return { command, key, score, indices, segments: highlightSegments(command.label, indices) };
+}
+
+function isParent(command: Command): command is ParentCommand {
+  return Array.isArray(command.children);
+}
+
+/** The commands and, recursively, the children of those that are not hidden (for the recents). */
+function descendants(commands: readonly Command[]): Command[] {
+  const all: Command[] = [];
+  for (const command of commands) {
+    if (isHidden(command)) continue;
+    all.push(command);
+    if (isParent(command)) all.push(...descendants(command.children));
+  }
+  return all;
 }
 
 /** Reads `hidden` (a boolean, a function or a signal) so that signals are tracked by the caller. */

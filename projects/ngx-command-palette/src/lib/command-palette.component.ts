@@ -19,7 +19,7 @@ import {
   viewChild,
 } from '@angular/core';
 
-import type { CommandResult } from './command.model';
+import type { Command, CommandResult } from './command.model';
 import { CommandPaletteService } from './command-palette.service';
 import { COMMAND_PALETTE_CONFIG, type CommandPaletteTheme } from './config';
 import { keyToAction, moveIndex } from './list-navigation';
@@ -110,7 +110,12 @@ export class CommandPaletteComponent {
   protected readonly status = computed(() => {
     if (this.service.loading()) return this.labels.loading;
     const count = this.items().length;
-    return count === 0 ? this.labels.empty : this.labels.results.replace('{count}', String(count));
+    if (count === 0) return this.labels.empty;
+    const path = this.service.path();
+    const template = path.length ? this.labels.level : this.labels.results;
+    return template
+      .replace('{name}', path[path.length - 1]?.label ?? '')
+      .replace('{count}', String(count));
   });
 
   constructor() {
@@ -141,6 +146,16 @@ export class CommandPaletteComponent {
     return `${this.uid}-option-${index}`;
   }
 
+  protected hasChildren(command: Command): boolean {
+    return Array.isArray(command.children);
+  }
+
+  protected onBack(levels: number): void {
+    this.activeKey.set(null);
+    this.service.back(levels);
+    this.input()?.nativeElement.focus({ preventScroll: true });
+  }
+
   protected isTemplate(icon: unknown): icon is TemplateRef<unknown> {
     return icon instanceof TemplateRef;
   }
@@ -153,6 +168,18 @@ export class CommandPaletteComponent {
   protected onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Tab') {
       this.trapTab(event);
+      return;
+    }
+    if (
+      event.key === 'Backspace' &&
+      !event.isComposing &&
+      this.service.query() === '' &&
+      this.service.path().length
+    ) {
+      // Like deleting the "tag" in front of the search text: leave the sub-palette
+      event.preventDefault();
+      this.activeKey.set(null);
+      this.service.back();
       return;
     }
     const action = keyToAction(event);
