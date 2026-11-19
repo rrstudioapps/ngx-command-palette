@@ -1,0 +1,43 @@
+{
+  "name": "@rrstudioapps/ngx-command-palette",
+  "version": "0.1.0",
+  "description": "Accessible ⌘K / Ctrl+K command palette for Angular: fuzzy search, sections, recents, async providers. Standalone, signals, zoneless, zero dependencies.",
+  "keywords": [
+    "angular",
+    "command-palette",
+    "cmdk",
+    "kbar",
+    "command-menu",
+    "spotlight",
+    "fuzzy-search",
+    "keyboard",
+    "a11y",
+    "signals",
+    "zoneless",
+    "standalone"
+  ],
+  "license": "MIT",
+  "author": "rrstudio (https://github.com/rrstudioapps)",
+  "homepage": "https://github.com/rrstudioapps/ngx-command-palette#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rrstudioapps/ngx-command-palette.git",
+    "directory": "projects/ngx-command-palette"
+  },
+  "bugs": {
+    "url": "https://github.com/rrstudioapps/ngx-command-palette/issues"
+  },
+  "peerDependencies": {
+    "@angular/common": ">=21.0.0 <23.0.0",
+    "@angular/core": ">=21.0.0 <23.0.0",
+    "@angular/router": ">=21.0.0 <23.0.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "sideEffects": false
+}

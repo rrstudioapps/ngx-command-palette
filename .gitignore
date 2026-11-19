@@ -1,0 +1,20 @@
+# Build
+/dist
+/out-tsc
+/tmp
+/.angular
+
+# Dipendenze
+/node_modules
+
+# Editor e sistema
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+/.vscode/*
+!/.vscode/extensions.json
+
+# Log
+npm-debug.log*
+*.log

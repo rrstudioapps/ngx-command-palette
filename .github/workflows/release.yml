@@ -1,0 +1,31 @@
+name: Release
+
+# Pubblica su npm quando si crea un tag vX.Y.Z (Trusted Publishing, niente token salvati)
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    environment: npm
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - name: Tag and package version must match
+        run: |
+          version=$(node -p "require('./projects/ngx-command-palette/package.json').version")
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME != v$version"; exit 1; }
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build:lib
+      - run: npm publish ./dist/ngx-command-palette --access public --provenance

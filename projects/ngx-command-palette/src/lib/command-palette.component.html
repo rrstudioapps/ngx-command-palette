@@ -1,0 +1,138 @@
+@if (service.isOpen()) {
+  <div class="rr-cp" [attr.data-theme]="resolvedTheme()" (mousedown)="onOverlayDown($event)">
+    <div
+      #dialog
+      class="rr-cp-dialog"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="labels.dialog"
+      (keydown)="onKeydown($event)"
+    >
+      <div class="rr-cp-search">
+        <svg
+          class="rr-cp-search-icon"
+          viewBox="0 0 24 24"
+          width="18"
+          height="18"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2" />
+          <path
+            d="m20 20-3.5-3.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+          />
+        </svg>
+        <input
+          #input
+          class="rr-cp-input"
+          type="text"
+          role="combobox"
+          aria-expanded="true"
+          aria-autocomplete="list"
+          aria-haspopup="listbox"
+          [attr.aria-controls]="uid + '-listbox'"
+          [attr.aria-activedescendant]="activeDescendant()"
+          [attr.aria-label]="labels.placeholder"
+          [placeholder]="labels.placeholder"
+          [value]="service.query()"
+          (input)="onInput($event)"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+        />
+        @if (service.loading()) {
+          <span class="rr-cp-spinner" aria-hidden="true"></span>
+        }
+        <kbd class="rr-cp-esc" aria-hidden="true">{{ labels.closeHint }}</kbd>
+      </div>
+
+      <div
+        class="rr-cp-list"
+        role="listbox"
+        [id]="uid + '-listbox'"
+        [attr.aria-label]="labels.listbox"
+        [attr.aria-busy]="service.loading()"
+      >
+        @for (group of view(); track group.section.id) {
+          <div class="rr-cp-group" role="group" [attr.aria-labelledby]="group.headingId">
+            <!-- prettier-ignore -->
+            <div class="rr-cp-group-label" [id]="group.headingId" aria-hidden="true">{{ group.section.label }}</div>
+            @for (row of group.rows; track row.item.key) {
+              <!-- Pattern combobox: le opzioni non ricevono il focus, la tastiera passa dall'input (aria-activedescendant) -->
+              <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+              <div
+                class="rr-cp-item"
+                role="option"
+                [id]="optionId(row.index)"
+                [class.rr-cp-item-active]="row.index === activeIndex()"
+                [attr.aria-selected]="row.index === activeIndex()"
+                [attr.aria-disabled]="row.item.command.disabled ? true : null"
+                (mousedown)="$event.preventDefault()"
+                (mousemove)="onPointerMove(row.item)"
+                (click)="onSelect(row.item)"
+              >
+                @if (itemTemplate(); as custom) {
+                  <ng-container
+                    [ngTemplateOutlet]="custom.template"
+                    [ngTemplateOutletContext]="{
+                      $implicit: row.item.command,
+                      result: row.item,
+                      segments: row.item.segments,
+                      active: row.index === activeIndex(),
+                      query: service.query(),
+                    }"
+                  />
+                } @else {
+                  @if (row.item.command.icon; as icon) {
+                    <span class="rr-cp-icon" aria-hidden="true">
+                      @if (isTemplate(icon)) {
+                        <ng-container [ngTemplateOutlet]="icon" />
+                      } @else {
+                        {{ icon }}
+                      }
+                    </span>
+                  }
+                  <span class="rr-cp-text">
+                    <!-- su una riga sola: gli a capo diventerebbero spazi dentro l'etichetta -->
+                    <!-- prettier-ignore -->
+                    <span class="rr-cp-label">@for (segment of row.item.segments; track $index) {@if (segment.match) {<mark class="rr-cp-match">{{ segment.text }}</mark>} @else {{{ segment.text }}}}</span>
+                    @if (row.item.command.description) {
+                      <span class="rr-cp-description">{{ row.item.command.description }}</span>
+                    }
+                  </span>
+                  @if (row.item.command.shortcut?.length) {
+                    <span class="rr-cp-shortcut" aria-hidden="true">
+                      @for (key of row.item.command.shortcut; track $index) {
+                        <kbd>{{ key }}</kbd>
+                      }
+                    </span>
+                  }
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      @if (items().length === 0) {
+        <div class="rr-cp-empty">
+          @if (service.loading()) {
+            {{ labels.loading }}
+          } @else if (emptyTemplate(); as custom) {
+            <ng-container
+              [ngTemplateOutlet]="custom.template"
+              [ngTemplateOutletContext]="{ $implicit: service.query() }"
+            />
+          } @else {
+            {{ labels.empty }}
+          }
+        </div>
+      }
+
+      <div class="rr-cp-sr-only" aria-live="polite" aria-atomic="true">{{ status() }}</div>
+    </div>
+  </div>
+}

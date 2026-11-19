@@ -1,0 +1,342 @@
+/* Stili globali della demo (la palette ha i suoi, con le variabili --rr-cp-*) */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #0f172a;
+  --muted: #5b6474;
+  --line: #e3e6eb;
+  --chip: #eef1f5;
+  --accent: #2563eb;
+  --accent-fg: #ffffff;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0b0e14;
+  --surface: #131822;
+  --fg: #e6e9ef;
+  --muted: #9aa3b2;
+  --line: #232a36;
+  --chip: #1c2230;
+  --accent: #60a5fa;
+  --accent-fg: #0b0e14;
+  color-scheme: dark;
+}
+
+/* La palette con i colori della demo: basta sovrascrivere le variabili su .rr-cp */
+.rr-cp {
+  --rr-cp-accent: var(--accent);
+  --rr-cp-highlight: var(--accent);
+  --rr-cp-font: inherit;
+}
+
+.rr-cp[data-theme='dark'] {
+  --rr-cp-bg: #131822;
+  --rr-cp-border: #232a36;
+  --rr-cp-item-active-bg: #1c2230;
+  --rr-cp-kbd-bg: #1c2230;
+}
+
+html.compact .rr-cp {
+  --rr-cp-font-size: 0.875rem;
+}
+
+html.compact .rr-cp-item {
+  min-height: 32px;
+  padding-block: 3px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    16px/1.55 system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+
+a {
+  color: var(--accent);
+}
+
+h1 {
+  margin: 0 0 10px;
+  font-size: clamp(1.7rem, 4vw, 2.4rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+
+code,
+pre,
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--chip);
+  font-size: 0.875em;
+}
+
+pre {
+  margin: 0;
+  padding: 14px;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: var(--chip);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+pre code {
+  padding: 0;
+  background: none;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+button,
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+button.primary kbd {
+  border-color: transparent;
+  background: rgb(0 0 0 / 0.22);
+  color: inherit;
+}
+
+button.ghost {
+  justify-content: flex-start;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.page-head {
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.lead {
+  max-width: 64ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.card {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.card li + li {
+  margin-top: 6px;
+}
+
+.promo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.promo p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.list {
+  max-width: 640px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.list li.archived span:first-child {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.tag {
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--chip);
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.table-wrap {
+  max-width: 760px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 10px 16px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+tr + tr td,
+tbody tr td {
+  border-top: 1px solid var(--line);
+}
+
+.details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 24px;
+  max-width: 520px;
+  margin: 0 0 16px;
+}
+
+.details dt {
+  color: var(--muted);
+}
+
+.details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.settings {
+  max-width: 520px;
+  padding: 4px 20px;
+}
+
+.settings .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+}
+
+.settings .row + .row {
+  border-top: 1px solid var(--line);
+}
+
+.settings input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+/* Icone SVG dei comandi */
+.rr-cp-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

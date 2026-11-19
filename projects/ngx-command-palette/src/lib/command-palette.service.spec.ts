@@ -1,0 +1,299 @@
+// SPDX-License-Identifier: MIT
+// © 2026 rrstudio — ngx-command-palette
+
+import { Component, signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
+
+import type { Command, CommandProvider } from './command.model';
+import {
+  CommandPaletteService,
+  injectCommandProvider,
+  injectCommands,
+} from './command-palette.service';
+import { provideCommandPalette } from './config';
+
+const noop = () => undefined;
+
+function setup(options: Parameters<typeof provideCommandPalette>[0] = {}) {
+  localStorage.clear();
+  TestBed.configureTestingModule({
+    providers: [provideRouter([]), provideCommandPalette({ debounceMs: 100, ...options })],
+  });
+  return TestBed.inject(CommandPaletteService);
+}
+
+function labels(service: CommandPaletteService) {
+  return service.sections().map((s) => [s.label, s.items.map((i) => i.command.label)]);
+}
+
+describe('CommandPaletteService', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('opens, closes and toggles; closing resets the query', () => {
+    const service = setup();
+    service.open('abc');
+    expect(service.isOpen()).toBe(true);
+    expect(service.query()).toBe('abc');
+    service.close();
+    expect(service.isOpen()).toBe(false);
+    expect(service.query()).toBe('');
+    service.toggle();
+    expect(service.isOpen()).toBe(true);
+  });
+
+  it('groups commands by section in registration order', () => {
+    const service = setup();
+    service.register([
+      { id: 'home', label: 'Home', group: 'Navigation', route: '/' },
+      { id: 'theme', label: 'Toggle theme', run: noop },
+      { id: 'set', label: 'Settings', group: 'Navigation', route: '/settings' },
+    ]);
+    expect(labels(service)).toEqual([
+      ['Navigation', ['Home', 'Settings']],
+      ['Commands', ['Toggle theme']],
+    ]);
+  });
+
+  it('filters and sorts by score with a query', () => {
+    const service = setup();
+    service.register([
+      { id: 'a', label: 'Reset password', run: noop },
+      { id: 'b', label: 'Settings', run: noop },
+      { id: 'c', label: 'Open billing', run: noop },
+    ]);
+    service.open('set');
+    expect(labels(service)).toEqual([['Commands', ['Settings', 'Reset password']]]);
+    expect(service.sections()[0].items[0].segments[0]).toEqual({ text: 'Set', match: true });
+  });
+
+  it('respects maxResults', () => {
+    const service = setup({ maxResults: 2 });
+    service.register(['aa', 'ab', 'ac'].map((label) => ({ id: label, label, run: noop })));
+    service.open('a');
+    expect(service.sections()[0].items).toHaveLength(2);
+  });
+
+  it('accepts a signal and updates when it changes', () => {
+    const service = setup();
+    const list = signal<Command[]>([{ id: 'x', label: 'X', run: noop }]);
+    service.register(list);
+    expect(service.commands().map((c) => c.id)).toEqual(['x']);
+    list.set([{ id: 'y', label: 'Y', run: noop }]);
+    expect(service.commands().map((c) => c.id)).toEqual(['y']);
+  });
+
+  it('lets the last registration win for duplicated ids', () => {
+    const service = setup();
+    service.register([{ id: 'x', label: 'First', run: noop }]);
+    service.register([{ id: 'x', label: 'Second', run: noop }]);
+    expect(service.commands().map((c) => c.label)).toEqual(['Second']);
+  });
+
+  it('unregisters with the returned function', () => {
+    const service = setup();
+    const remove = service.register([{ id: 'x', label: 'X', run: noop }]);
+    remove();
+    expect(service.commands()).toEqual([]);
+  });
+
+  it('removes commands and providers when the component is destroyed', () => {
+    const service = setup();
+    @Component({ template: '' })
+    class Page {
+      constructor() {
+        injectCommands([{ id: 'page', label: 'Page command', run: noop }]);
+        injectCommandProvider({ id: 'p', group: 'P', search: async () => [] });
+        // anche register() chiamato nel costruttore si lega alla destroy
+        TestBedService.register([{ id: 'ctor', label: 'Ctor', run: noop }]);
+      }
+    }
+    const TestBedService = service;
+    const fixture = TestBed.createComponent(Page);
+    expect(service.commands().map((c) => c.id)).toEqual(['page', 'ctor']);
+    fixture.destroy();
+    expect(service.commands()).toEqual([]);
+  });
+
+  it('runs action commands with the query and closes', async () => {
+    const service = setup();
+    const run = vi.fn();
+    service.register([{ id: 'x', label: 'X', run }]);
+    service.open('x');
+    await service.execute(service.commands()[0]);
+    expect(run).toHaveBeenCalledWith({ query: 'x' });
+    expect(service.isOpen()).toBe(false);
+  });
+
+  it('navigates route commands', async () => {
+    const service = setup();
+    const router = TestBed.inject(Router);
+    const byUrl = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    const nav = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    await service.execute({ id: 'a', label: 'A', route: '/a?x=1' });
+    await service.execute({
+      id: 'b',
+      label: 'B',
+      route: ['/b', 2],
+      navigationExtras: { fragment: 'top' },
+    });
+    expect(byUrl).toHaveBeenCalledWith('/a?x=1', undefined);
+    expect(nav).toHaveBeenCalledWith(['/b', 2], { fragment: 'top' });
+  });
+
+  it('does not execute disabled commands', async () => {
+    const service = setup();
+    const run = vi.fn();
+    service.open();
+    await service.execute({ id: 'x', label: 'X', disabled: true, run });
+    expect(run).not.toHaveBeenCalled();
+    expect(service.isOpen()).toBe(true);
+  });
+
+  it('shows recents with an empty query, rebuilding route commands that are gone', async () => {
+    const service = setup();
+    const remove = service.register([
+      { id: 'a', label: 'Alpha', run: noop },
+      { id: 'b', label: 'Beta', run: noop },
+    ]);
+    await service.execute(service.commands()[1]);
+    // un risultato asincrono con route non è registrato ma resta tra i recenti
+    vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    await service.execute({
+      id: 'customer-1',
+      label: 'Ada Lovelace',
+      group: 'Customers',
+      route: '/c/1',
+    });
+    expect(labels(service)[0]).toEqual(['Recent', ['Ada Lovelace', 'Beta']]);
+    expect(JSON.parse(localStorage.getItem('rr-cp:recent')!)).toHaveLength(2);
+
+    remove();
+    // Beta (azione) non è più registrato e non si può ricostruire: sparisce
+    expect(labels(service)[0]).toEqual(['Recent', ['Ada Lovelace']]);
+    service.clearRecent();
+    expect(service.sections()).toEqual([]);
+  });
+
+  it('can disable recents', async () => {
+    const service = setup({ recent: false });
+    service.register([{ id: 'a', label: 'Alpha', run: noop }]);
+    await service.execute(service.commands()[0]);
+    expect(labels(service)).toEqual([['Commands', ['Alpha']]]);
+    expect(localStorage.getItem('rr-cp:recent')).toBeNull();
+  });
+
+  it('restores focus on close', () => {
+    const service = setup();
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    button.focus();
+    service.open();
+    (document.activeElement as HTMLElement).blur();
+    service.close();
+    expect(document.activeElement).toBe(button);
+    button.remove();
+  });
+
+  describe('async providers', () => {
+    function provider(
+      impl: CommandProvider['search'],
+      extra: Partial<CommandProvider> = {},
+    ): CommandProvider {
+      return { id: 'customers', group: 'Customers', search: impl, ...extra };
+    }
+
+    it('debounces, sets loading and shows results', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      const search = vi.fn(async (q: string) => [
+        { id: `c-${q}`, label: `Customer ${q}`, route: '/c' } as Command,
+      ]);
+      service.registerProvider(provider(search));
+      service.open();
+      service.setQuery('a');
+      service.setQuery('ad');
+      expect(service.loading()).toBe(true);
+      await vi.advanceTimersByTimeAsync(99);
+      expect(search).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(search).toHaveBeenCalledTimes(1);
+      expect(search.mock.calls[0][0]).toBe('ad');
+      expect(service.loading()).toBe(false);
+      expect(labels(service)).toEqual([['Customers', ['Customer ad']]]);
+    });
+
+    it('respects minQueryLength and its own debounce', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      const search = vi.fn(async () => []);
+      service.registerProvider(provider(search, { minQueryLength: 3, debounceMs: 10 }));
+      service.open('ab');
+      await vi.advanceTimersByTimeAsync(50);
+      expect(search).not.toHaveBeenCalled();
+      expect(service.loading()).toBe(false);
+      service.setQuery('abc');
+      await vi.advanceTimersByTimeAsync(10);
+      expect(search).toHaveBeenCalledTimes(1);
+    });
+
+    it('aborts the previous request and ignores its late result', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      const signals: AbortSignal[] = [];
+      const resolvers: ((v: Command[]) => void)[] = [];
+      service.registerProvider(
+        provider((_q, signal) => {
+          signals.push(signal);
+          return new Promise<Command[]>((resolve) => resolvers.push(resolve));
+        }),
+      );
+      service.open('one');
+      await vi.advanceTimersByTimeAsync(100);
+      service.setQuery('two');
+      expect(signals[0].aborted).toBe(true);
+      await vi.advanceTimersByTimeAsync(100);
+      resolvers[1]([{ id: 'new', label: 'New', route: '/' }]);
+      resolvers[0]([{ id: 'old', label: 'Old', route: '/' }]);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(labels(service)).toEqual([['Customers', ['New']]]);
+    });
+
+    it('supports observables and errors', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      const unsubscribe = vi.fn();
+      service.registerProvider(
+        provider(() => ({
+          subscribe(observer) {
+            observer.next?.([{ id: 'o', label: 'From observable', route: '/' }]);
+            return { unsubscribe };
+          },
+        })),
+      );
+      service.registerProvider({
+        id: 'broken',
+        group: 'Broken',
+        search: () => Promise.reject(new Error('API down')),
+      });
+      service.open('o');
+      await vi.advanceTimersByTimeAsync(100);
+      expect(labels(service)).toEqual([['Customers', ['From observable']]]);
+      expect(service.loading()).toBe(false);
+      service.close();
+      expect(unsubscribe).toHaveBeenCalled();
+    });
+
+    it('cancels everything on close', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      const search = vi.fn(async () => []);
+      service.registerProvider(provider(search));
+      service.open('a');
+      service.close();
+      await vi.advanceTimersByTimeAsync(500);
+      expect(search).not.toHaveBeenCalled();
+      expect(service.loading()).toBe(false);
+    });
+  });
+});

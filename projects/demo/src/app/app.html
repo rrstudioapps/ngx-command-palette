@@ -1,0 +1,43 @@
+<a class="skip" href="#main">Skip to content</a>
+<div class="shell">
+  <aside class="sidebar" aria-label="Sidebar">
+    <a class="brand" routerLink="/">
+      <span class="logo" aria-hidden="true">⌘</span>
+      <span>Acme Cloud</span>
+    </a>
+    <button type="button" class="search" (click)="palette.open()" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5" />
+      </svg>
+      <span>Search…</span>
+      <kbd>{{ cp.shortcutLabel }}</kbd>
+    </button>
+    <nav aria-label="Main">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
+        >Overview</a
+      >
+      <a routerLink="/projects" routerLinkActive="active">Projects</a>
+      <a routerLink="/customers" routerLinkActive="active">Customers</a>
+      <a routerLink="/settings" routerLinkActive="active">Settings</a>
+    </nav>
+    <div class="sidebar-foot">
+      <button type="button" class="ghost" (click)="themeService.toggle()">
+        {{ themeService.theme() === 'dark' ? 'Light theme' : 'Dark theme' }}
+      </button>
+      <a [href]="links.github" rel="noopener">GitHub</a>
+      <a [href]="links.demos">All demos</a>
+    </div>
+  </aside>
+  <main id="main" tabindex="-1">
+    <router-outlet />
+  </main>
+</div>
+
+<rr-command-palette #cp [theme]="themeService.theme()">
+  <ng-template rrCommandEmpty let-query>
+    <p class="empty-title">No results for “{{ query }}”</p>
+    <p class="empty-hint">Try “dark”, “new project” or a customer name like “ada”.</p>
+  </ng-template>
+</rr-command-palette>
+<demo-icons />
