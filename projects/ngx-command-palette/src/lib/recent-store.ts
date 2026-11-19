@@ -60,7 +60,7 @@ export class RecentStore {
     try {
       this.storage?.removeItem(this.storageKey);
     } catch {
-      /* storage non disponibile */
+      /* storage not available */
     }
   }
 
@@ -68,7 +68,7 @@ export class RecentStore {
     try {
       this.storage?.setItem(this.storageKey, JSON.stringify(entries));
     } catch {
-      /* quota piena o storage bloccato: i recenti restano solo in memoria */
+      /* quota exceeded or storage blocked: recents stay in memory only */
     }
   }
 }

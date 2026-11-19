@@ -10,7 +10,7 @@ export interface FuzzyMatch {
   readonly indices: readonly number[];
 }
 
-// Pesi del punteggio: lettere consecutive e inizi di parola valgono di più, i buchi costano.
+// Scoring weights: consecutive letters and word starts are worth more, gaps cost.
 const SCORE_CHAR = 1;
 const BONUS_CONSECUTIVE = 5;
 const BONUS_WORD_START = 8;
@@ -29,7 +29,7 @@ function isWordStart(text: string, i: number): boolean {
   if (i === 0) return true;
   const prev = text[i - 1];
   if (SEPARATORS.has(prev)) return true;
-  // camelCase: minuscola seguita da maiuscola
+  // camelCase: lowercase followed by uppercase
   const cur = text[i];
   return prev === prev.toLowerCase() && cur !== cur.toLowerCase() && cur === cur.toUpperCase();
 }
@@ -41,17 +41,17 @@ function isWordStart(text: string, i: number): boolean {
 export function fuzzyMatch(query: string, text: string): FuzzyMatch | null {
   const q = query.replace(/\s+/g, '').split('').map(fold);
   if (q.length === 0) return { score: 0, indices: [] };
-  // Lavora su unità UTF-16: gli indici restano quelli di `text`.
+  // Work on UTF-16 units so indices stay those of `text`.
   const t: string[] = [];
-  // eslint-disable-next-line @typescript-eslint/prefer-for-of -- for-of scorre i code point e sfaserebbe gli indici
+  // eslint-disable-next-line @typescript-eslint/prefer-for-of -- for-of iterates code points and would shift the indices
   for (let i = 0; i < text.length; i++) t.push(fold(text[i]));
   const m = q.length;
   const n = t.length;
   if (m > n) return null;
 
   const NEG = -Infinity;
-  // M[i][j]: miglior punteggio con q[i] abbinato a t[j]
-  // D[i][j]: miglior punteggio con q[0..i] abbinati entro t[0..j] (con penalità per i caratteri saltati dopo)
+  // M[i][j]: best score with q[i] matched to t[j]
+  // D[i][j]: best score with q[0..i] matched within t[0..j] (minus a penalty for characters skipped after)
   const M: Float64Array[] = [];
   const D: Float64Array[] = [];
   const bonus = new Float64Array(n);
@@ -62,7 +62,7 @@ export function fuzzyMatch(query: string, text: string): FuzzyMatch | null {
       (j === 0 ? BONUS_STRING_START : 0);
   }
 
-  // Per la ricostruzione: da dove arriva ogni M (consecutivo o salto) e quale k dà ogni D
+  // For the traceback: where each M comes from (consecutive or jump) and which k gives each D
   const consec: Uint8Array[] = [];
   const Dk: Int32Array[] = [];
   for (let i = 0; i < m; i++) {
@@ -100,7 +100,7 @@ export function fuzzyMatch(query: string, text: string): FuzzyMatch | null {
     Dk.push(Ki);
   }
 
-  // Fine dell'allineamento: il miglior M sull'ultima riga
+  // End of the alignment: the best M on the last row
   let end = -1;
   let best = NEG;
   for (let j = m - 1; j < n; j++) {
@@ -111,7 +111,7 @@ export function fuzzyMatch(query: string, text: string): FuzzyMatch | null {
   }
   if (end < 0) return null;
 
-  // Ricostruzione degli indici all'indietro
+  // Rebuild the indices backwards
   const indices = new Array<number>(m);
   let j = end;
   for (let i = m - 1; i >= 0; i--) {
@@ -120,7 +120,7 @@ export function fuzzyMatch(query: string, text: string): FuzzyMatch | null {
     j = consec[i][j] ? j - 1 : Dk[i - 1][j - 1];
   }
 
-  // Piccolo premio alle stringhe corte: a parità di match vince il testo più vicino alla query
+  // Small bonus for short strings: with equal matches the text closest to the query wins
   const score = best - (n - m) * 0.01;
   return { score, indices };
 }
@@ -145,12 +145,12 @@ export function highlightSegments(text: string, indices: readonly number[]): Hig
   return out;
 }
 
-// Peso dei campi: il label conta di più, poi le keywords, poi la descrizione.
+// Field weights: label first, then keywords, then description.
 const WEIGHT_KEYWORD = 0.8;
 const WEIGHT_DESCRIPTION = 0.5;
 /**
- * Qualità minima (punti medi per carattere) per keywords e descrizione: testi lunghi
- * contengono quasi ogni sequenza di lettere sparse, quindi lì servono inizi di parola o lettere vicine.
+ * Minimum quality (average points per character) for keywords and description: long texts
+ * contain almost any scattered letter sequence, so there we require word starts or close letters.
  */
 const MIN_SECONDARY_QUALITY = 4;
 

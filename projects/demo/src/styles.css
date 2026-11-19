@@ -1,4 +1,4 @@
-/* Stili globali della demo (la palette ha i suoi, con le variabili --rr-cp-*) */
+/* Global demo styles (the palette has its own, driven by the --rr-cp-* variables) */
 :root {
   --bg: #f6f7f9;
   --surface: #ffffff;
@@ -23,7 +23,7 @@
   color-scheme: dark;
 }
 
-/* La palette con i colori della demo: basta sovrascrivere le variabili su .rr-cp */
+/* Palette in the demo colors: overriding the variables on .rr-cp is enough */
 .rr-cp {
   --rr-cp-accent: var(--accent);
   --rr-cp-highlight: var(--accent);
@@ -330,7 +330,7 @@ tbody tr td {
   accent-color: var(--accent);
 }
 
-/* Icone SVG dei comandi */
+/* Command SVG icons */
 .rr-cp-icon svg {
   width: 18px;
   height: 18px;

@@ -35,7 +35,7 @@ interface ProviderState {
   readonly error?: unknown;
 }
 
-/** Richiesta in corso di un provider: timer del debounce, abort e sottoscrizione. */
+/** In-flight provider request: debounce timer, abort controller and subscription. */
 interface PendingRequest {
   timer?: ReturnType<typeof setTimeout>;
   controller?: AbortController;
@@ -99,7 +99,7 @@ export class CommandPaletteService {
   open(query = ''): void {
     if (!this._isOpen()) {
       const active = this.document.activeElement;
-      // Niente instanceof HTMLElement: in SSR la classe non esiste
+      // No instanceof HTMLElement: the class does not exist during SSR
       this.returnFocus =
         active &&
         active !== this.document.body &&
@@ -190,7 +190,7 @@ export class CommandPaletteService {
     this.recents.set([]);
   }
 
-  // ---- interni ----
+  // ---- internals ----
 
   private bindToDestroy(remove: () => void, destroyRef?: DestroyRef): () => void {
     const ref = destroyRef ?? currentDestroyRef();
@@ -228,7 +228,7 @@ export class CommandPaletteService {
         const group = command.group ?? defaultGroup;
         scored.push(toResult(command, `g:${group}:${command.id}`, match.score, match.indices));
       }
-      // Ordine stabile: a parità di punteggio resta l'ordine di registrazione
+      // Stable sort: equal scores keep the registration order
       scored.sort((a, b) => b.score - a.score);
       for (const result of scored.slice(0, this.config.maxResults)) {
         push(result.command.group ?? defaultGroup, result);
@@ -236,7 +236,7 @@ export class CommandPaletteService {
     }
     for (const [label, items] of groups) sections.push({ id: `g:${label}`, label, items });
 
-    // Risultati asincroni: l'ordine è quello del server, l'evidenziazione se c'è un match
+    // Async results: server order, highlighted when the label matches
     const states = this.providerState();
     for (const provider of this.providers()) {
       const state = states.get(provider.id);
@@ -260,7 +260,7 @@ export class CommandPaletteService {
     const byId = new Map(commands.map((c) => [c.id, c]));
     const results: CommandResult[] = [];
     for (const entry of this.recents()) {
-      // Comando ancora registrato, oppure ricostruito dalla route salvata (es. un cliente da API)
+      // Still registered, or rebuilt from the saved route (e.g. a customer from an API)
       const command: Command | undefined =
         byId.get(entry.id) ??
         (entry.route !== undefined
@@ -367,7 +367,7 @@ function currentDestroyRef(): DestroyRef | null {
   try {
     return inject(DestroyRef, { optional: true });
   } catch {
-    // Fuori da un injection context: la rimozione resta manuale
+    // Outside an injection context: removal stays manual
     return null;
   }
 }

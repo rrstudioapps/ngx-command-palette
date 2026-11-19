@@ -5,7 +5,7 @@ import { DOCUMENT, Injectable, effect, inject, signal } from '@angular/core';
 
 export type DemoTheme = 'light' | 'dark';
 
-/** Tema della demo: segue il sistema finché l'utente non lo cambia (solo per questa visita). */
+/** Demo theme: follows the system until the user changes it (for this visit only). */
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly document = inject(DOCUMENT);

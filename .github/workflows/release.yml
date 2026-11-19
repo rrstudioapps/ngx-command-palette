@@ -1,6 +1,6 @@
 name: Release
 
-# Pubblica su npm quando si crea un tag vX.Y.Z (Trusted Publishing, niente token salvati)
+# Publishes to npm when a vX.Y.Z tag is pushed (Trusted Publishing, no stored tokens)
 on:
   push:
     tags: ['v*']

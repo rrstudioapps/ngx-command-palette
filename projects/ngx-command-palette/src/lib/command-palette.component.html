@@ -61,7 +61,7 @@
             <!-- prettier-ignore -->
             <div class="rr-cp-group-label" [id]="group.headingId" aria-hidden="true">{{ group.section.label }}</div>
             @for (row of group.rows; track row.item.key) {
-              <!-- Pattern combobox: le opzioni non ricevono il focus, la tastiera passa dall'input (aria-activedescendant) -->
+              <!-- Combobox pattern: options never get focus, the keyboard goes through the input (aria-activedescendant) -->
               <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
               <div
                 class="rr-cp-item"
@@ -96,7 +96,7 @@
                     </span>
                   }
                   <span class="rr-cp-text">
-                    <!-- su una riga sola: gli a capo diventerebbero spazi dentro l'etichetta -->
+                    <!-- Single line: line breaks would become spaces inside the label -->
                     <!-- prettier-ignore -->
                     <span class="rr-cp-label">@for (segment of row.item.segments; track $index) {@if (segment.match) {<mark class="rr-cp-match">{{ segment.text }}</mark>} @else {{{ segment.text }}}}</span>
                     @if (row.item.command.description) {

@@ -78,11 +78,11 @@ export function matchesShortcut(
     return false;
   }
   const key = (event.key ?? '').toLowerCase();
-  // Shift conta solo se richiesto o se il tasto è una lettera (per "?" serve shift, ma non lo si scrive)
+  // Shift matters only when requested or for letters ("?" needs Shift, but nobody writes it)
   const isLetter = /^[a-z]$/.test(shortcut.key);
   if ((shortcut.shift || isLetter) && event.shiftKey !== shortcut.shift) return false;
   if (key === shortcut.key) return true;
-  // Con Alt o layout non latini event.key cambia: si guarda il tasto fisico
+  // With Alt or non-Latin layouts event.key changes: fall back to the physical key
   if (isLetter && event.code === `Key${shortcut.key.toUpperCase()}`) return true;
   if (/^[0-9]$/.test(shortcut.key) && event.code === `Digit${shortcut.key}`) return true;
   return false;

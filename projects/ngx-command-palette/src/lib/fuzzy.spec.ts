@@ -25,7 +25,7 @@ describe('fuzzyMatch', () => {
   });
 
   it('prefers word starts over scattered letters', () => {
-    // "gs" deve prendere le iniziali di "Go to Settings", non la "s" di "Go" o altre
+    // "gs" must pick the initials of "Go to Settings", not any other "s"
     expect(fuzzyMatch('gs', 'Go to Settings')?.indices).toEqual([0, 6]);
     expect(fuzzyMatch('np', 'New project')?.indices).toEqual([0, 4]);
   });
@@ -49,7 +49,7 @@ describe('fuzzyMatch', () => {
   });
 
   it('finds the best alignment, not the first one', () => {
-    // la prima "a" è in "Data", ma il match migliore è l'inizio di "Analytics"
+    // the first "a" is in "Data", but the best match is the start of "Analytics"
     expect(fuzzyMatch('an', 'Data Analytics')?.indices).toEqual([5, 6]);
   });
 });

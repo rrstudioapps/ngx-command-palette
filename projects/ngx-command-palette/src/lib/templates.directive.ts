@@ -29,9 +29,9 @@ export interface CommandEmptyContext {
 export class CommandItemTemplate {
   readonly template = inject<TemplateRef<CommandItemContext>>(TemplateRef);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- firma richiesta da Angular
   static ngTemplateContextGuard(
     _dir: CommandItemTemplate,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- signature required by Angular
     ctx: unknown,
   ): ctx is CommandItemContext {
     return true;
@@ -43,9 +43,9 @@ export class CommandItemTemplate {
 export class CommandEmptyTemplate {
   readonly template = inject<TemplateRef<CommandEmptyContext>>(TemplateRef);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- firma richiesta da Angular
   static ngTemplateContextGuard(
     _dir: CommandEmptyTemplate,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- signature required by Angular
     ctx: unknown,
   ): ctx is CommandEmptyContext {
     return true;

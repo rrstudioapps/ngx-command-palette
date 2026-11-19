@@ -4,10 +4,10 @@
 /tmp
 /.angular
 
-# Dipendenze
+# Dependencies
 /node_modules
 
-# Editor e sistema
+# Editor and OS
 .idea/
 *.swp
 .DS_Store

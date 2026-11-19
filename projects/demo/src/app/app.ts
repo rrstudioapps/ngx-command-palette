@@ -44,7 +44,7 @@ export class App {
   protected readonly links = LINKS;
 
   constructor() {
-    // Comandi globali: un signal, così le icone (TemplateRef) arrivano quando il template è pronto
+    // Global commands as a signal, so the icons (TemplateRefs) show up once their template is ready
     injectCommands(
       computed<Command[]>(() => {
         const icon = this.icons.map();
@@ -136,7 +136,7 @@ export class App {
       }),
     );
 
-    // Comandi asincroni: ricerca clienti su una finta API con ritardo
+    // Async commands: customer search on a fake API with a delay
     injectCommandProvider({
       id: 'customers',
       group: 'Customers',

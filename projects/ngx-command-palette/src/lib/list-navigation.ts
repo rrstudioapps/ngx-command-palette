@@ -10,7 +10,7 @@ type KeyLike = Pick<
 
 /** Maps a keydown inside the palette to a list action, or `null` to let the input handle it. */
 export function keyToAction(event: KeyLike): NavigationAction | null {
-  // Durante la composizione (IME) Invio e frecce appartengono all'editor del testo
+  // During IME composition Enter and arrows belong to the text editor
   if (event.isComposing) return null;
   switch (event.key) {
     case 'ArrowDown':
@@ -29,7 +29,7 @@ export function keyToAction(event: KeyLike): NavigationAction | null {
       return 'select';
     case 'Escape':
       return 'close';
-    // Ctrl+N / Ctrl+P come in Emacs e in molte palette (non Ctrl+J/K: Ctrl+K apre e chiude)
+    // Ctrl+N / Ctrl+P as in Emacs and many palettes (not Ctrl+J/K: Ctrl+K toggles the palette)
     case 'n':
       return event.ctrlKey && !event.metaKey && !event.altKey ? 'next' : null;
     case 'p':

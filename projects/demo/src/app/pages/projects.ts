@@ -85,7 +85,7 @@ export default class Projects {
   }
 
   private add(query: string): void {
-    // Il testo digitato diventa il nome, se non è il nome del comando stesso
+    // The typed text becomes the name, unless it is the command name itself
     const name = query && !/new|proj/i.test(query) ? query : `Untitled project ${this.nextId}`;
     this.projects.update((list) => [{ id: this.nextId++, name, archived: false }, ...list]);
   }

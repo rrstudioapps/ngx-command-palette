@@ -79,7 +79,7 @@ export class CommandPaletteComponent {
     return theme === 'auto' ? (this.prefersDark() ? 'dark' : 'light') : theme;
   });
 
-  /** Sezioni con l'indice piatto di ogni riga (serve agli id e alla tastiera). */
+  /** Sections with the flat index of each row (used for ids and keyboard navigation). */
   protected readonly view = computed(() => {
     let index = 0;
     return this.service.sections().map((section, sectionIndex) => ({
@@ -123,12 +123,12 @@ export class CommandPaletteComponent {
       inject(DestroyRef).onDestroy(() => media.removeEventListener?.('change', listener));
     }
 
-    // Focus nel campo di ricerca appena il dialog compare
+    // Focus the search field as soon as the dialog appears
     afterRenderEffect(() => {
       const input = this.input()?.nativeElement;
       if (input && this.document.activeElement !== input) input.focus({ preventScroll: true });
     });
-    // La riga attiva resta visibile durante la navigazione da tastiera
+    // Keep the active row visible during keyboard navigation
     afterRenderEffect(() => {
       const id = this.activeDescendant();
       if (!id) return;
@@ -189,13 +189,13 @@ export class CommandPaletteComponent {
   }
 
   protected onOverlayDown(event: MouseEvent): void {
-    // Solo un click sullo sfondo, non dentro il dialog
+    // Only a click on the backdrop, not inside the dialog
     if (event.target === event.currentTarget) this.service.close();
   }
 
   protected onDocumentKeydown(event: KeyboardEvent): void {
     if (event.repeat || event.isComposing) return;
-    // Le scorciatoie senza Ctrl/⌘/Alt (es. "/") non scattano mentre si scrive in un campo
+    // Shortcuts without Ctrl/⌘/Alt (e.g. "/") do not fire while typing in a field
     const typing = isEditable(event.target);
     const hit = this.shortcuts.some(
       (s) =>
@@ -211,7 +211,7 @@ export class CommandPaletteComponent {
   protected onDocumentFocusin(event: FocusEvent): void {
     if (!this.service.isOpen()) return;
     const dialog = this.dialog()?.nativeElement;
-    // Focus trap: se il focus esce dal dialog (es. click su un iframe o tab da script) torna nel campo
+    // Focus trap: if focus leaves the dialog (e.g. an iframe click or a scripted focus) it returns to the input
     if (dialog && event.target instanceof Node && !dialog.contains(event.target)) {
       this.input()?.nativeElement.focus({ preventScroll: true });
     }

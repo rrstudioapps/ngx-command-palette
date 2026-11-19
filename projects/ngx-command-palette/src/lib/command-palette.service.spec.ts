@@ -104,7 +104,7 @@ describe('CommandPaletteService', () => {
       constructor() {
         injectCommands([{ id: 'page', label: 'Page command', run: noop }]);
         injectCommandProvider({ id: 'p', group: 'P', search: async () => [] });
-        // anche register() chiamato nel costruttore si lega alla destroy
+        // register() called in the constructor is bound to destroy as well
         TestBedService.register([{ id: 'ctor', label: 'Ctor', run: noop }]);
       }
     }
@@ -157,7 +157,7 @@ describe('CommandPaletteService', () => {
       { id: 'b', label: 'Beta', run: noop },
     ]);
     await service.execute(service.commands()[1]);
-    // un risultato asincrono con route non è registrato ma resta tra i recenti
+    // an async result with a route is not registered but stays in recents
     vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     await service.execute({
       id: 'customer-1',
@@ -169,7 +169,7 @@ describe('CommandPaletteService', () => {
     expect(JSON.parse(localStorage.getItem('rr-cp:recent')!)).toHaveLength(2);
 
     remove();
-    // Beta (azione) non è più registrato e non si può ricostruire: sparisce
+    // Beta (an action) is no longer registered and cannot be rebuilt: it disappears
     expect(labels(service)[0]).toEqual(['Recent', ['Ada Lovelace']]);
     service.clearRecent();
     expect(service.sections()).toEqual([]);

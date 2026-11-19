@@ -12,14 +12,14 @@ import {
   viewChildren,
 } from '@angular/core';
 
-/** Marca un'icona SVG nel template di DemoIcons: `<ng-template demoIcon="home">`. */
+/** Marks an SVG icon in the DemoIcons template: `<ng-template demoIcon="home">`. */
 @Directive({ selector: 'ng-template[demoIcon]' })
 export class DemoIconDef {
   readonly name = input.required<string>({ alias: 'demoIcon' });
   readonly template = inject(TemplateRef);
 }
 
-/** Icone dei comandi come TemplateRef: dimostra `icon: TemplateRef` nella palette. */
+/** Command icons as TemplateRefs: shows `icon: TemplateRef` in the palette. */
 @Injectable({ providedIn: 'root' })
 export class IconRegistry {
   private source?: () => readonly DemoIconDef[];
@@ -32,7 +32,7 @@ export class IconRegistry {
   }
 }
 
-/** Contiene le icone; va messo una volta nel componente radice. */
+/** Holds the icons; place it once in the root component. */
 @Component({
   selector: 'demo-icons',
   imports: [DemoIconDef],

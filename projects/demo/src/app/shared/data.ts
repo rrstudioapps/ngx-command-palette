@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // © 2026 rrstudio — ngx-command-palette demo
 
-/** Dati finti della demo: niente rete, tutto generato in modo deterministico. */
+/** Demo fake data: no network, everything generated deterministically. */
 
 export interface Customer {
   readonly id: number;
@@ -84,7 +84,7 @@ export const CUSTOMERS: readonly Customer[] = Array.from({ length: 200 }, (_, i)
   };
 });
 
-/** Finta API: risponde dopo `delay` ms e rispetta l'AbortSignal come farebbe fetch. */
+/** Fake API: answers after `delay` ms and honours the AbortSignal like fetch would. */
 export function searchCustomers(
   query: string,
   signal: AbortSignal,
