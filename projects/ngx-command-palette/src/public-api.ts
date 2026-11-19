@@ -21,6 +21,7 @@ export {
   DEFAULT_COMMAND_PALETTE_CONFIG,
   DEFAULT_COMMAND_PALETTE_LABELS,
   provideCommandPalette,
+  type CommandFilter,
   type CommandPaletteConfig,
   type CommandPaletteLabels,
   type CommandPaletteOptions,

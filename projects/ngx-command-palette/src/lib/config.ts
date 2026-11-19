@@ -3,6 +3,9 @@
 
 import { EnvironmentProviders, InjectionToken, makeEnvironmentProviders } from '@angular/core';
 
+import type { Command } from './command.model';
+import { matchCommand, type FuzzyMatch } from './fuzzy';
+
 export type CommandPaletteTheme = 'light' | 'dark' | 'auto';
 
 /** Texts of the palette, for translations. */
@@ -18,6 +21,12 @@ export interface CommandPaletteLabels {
   readonly results: string;
   readonly closeHint: string;
 }
+
+/**
+ * Decides whether `command` matches the search text and how well. Return `null` to hide the
+ * command. A higher `score` ranks first; `indices` are the label characters to highlight.
+ */
+export type CommandFilter = (query: string, command: Command) => FuzzyMatch | null;
 
 export interface CommandPaletteRecentOptions {
   /** Max number of recents shown. Default: 5. */
@@ -37,6 +46,8 @@ export interface CommandPaletteConfig {
   readonly debounceMs: number;
   /** Max results of local commands for a non-empty query. Default: 50. */
   readonly maxResults: number;
+  /** Matching and ranking of local commands for a non-empty query. Default: the built-in fuzzy search. */
+  readonly filter: CommandFilter;
   readonly labels: CommandPaletteLabels;
 }
 
@@ -62,6 +73,7 @@ export const DEFAULT_COMMAND_PALETTE_CONFIG: CommandPaletteConfig = {
   recent: { max: 5, storageKey: 'rr-cp:recent' },
   debounceMs: 200,
   maxResults: 50,
+  filter: matchCommand,
   labels: DEFAULT_COMMAND_PALETTE_LABELS,
 };
 

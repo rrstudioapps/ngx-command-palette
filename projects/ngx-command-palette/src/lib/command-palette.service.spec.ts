@@ -195,6 +195,78 @@ describe('CommandPaletteService', () => {
     button.remove();
   });
 
+  describe('custom filter', () => {
+    const commands: Command[] = [
+      { id: 'a', label: 'Open settings', run: noop },
+      { id: 'b', label: 'Settings of the app', run: noop },
+      { id: 'c', label: 'Billing', keywords: ['settings'], run: noop },
+    ];
+
+    it('replaces the built-in search: only what the filter accepts is shown', () => {
+      const filter = vi.fn((query: string, command: Command) =>
+        command.label.toLowerCase().startsWith(query.toLowerCase())
+          ? { score: 1, indices: Array.from({ length: query.length }, (_, i) => i) }
+          : null,
+      );
+      const service = setup({ filter });
+      service.register(commands);
+      service.open('set');
+      expect(labels(service)).toEqual([['Commands', ['Settings of the app']]]);
+      expect(filter).toHaveBeenCalledWith('set', commands[0]);
+      const [item] = service.sections()[0].items;
+      expect(item.indices).toEqual([0, 1, 2]);
+      expect(item.segments).toEqual([
+        { text: 'Set', match: true },
+        { text: 'tings of the app', match: false },
+      ]);
+    });
+
+    it('ranks by the score it returns, keeping registration order on ties', () => {
+      const scores: Record<string, number> = { a: 1, b: 3, c: 3 };
+      const service = setup({
+        filter: (_query, command) => ({ score: scores[command.id], indices: [] }),
+      });
+      service.register(commands);
+      service.open('x');
+      expect(labels(service)).toEqual([
+        ['Commands', ['Settings of the app', 'Billing', 'Open settings']],
+      ]);
+    });
+
+    it('still applies maxResults and is not used with an empty query', () => {
+      const filter = vi.fn(() => ({ score: 1, indices: [] }));
+      const service = setup({ filter, maxResults: 2, recent: false });
+      service.register(commands);
+      service.open();
+      expect(filter).not.toHaveBeenCalled();
+      expect(service.sections()[0].items).toHaveLength(3);
+      service.setQuery('x');
+      expect(service.sections()[0].items).toHaveLength(2);
+    });
+
+    it('does not filter async provider results', async () => {
+      vi.useFakeTimers();
+      const service = setup({ filter: () => null });
+      service.registerProvider({
+        id: 'p',
+        group: 'Remote',
+        search: async () => [{ id: 'r', label: 'Remote item', route: '/r' }],
+      });
+      service.open('zzz');
+      await vi.advanceTimersByTimeAsync(100);
+      expect(labels(service)).toEqual([['Remote', ['Remote item']]]);
+    });
+
+    it('uses the built-in fuzzy search by default', () => {
+      const service = setup();
+      service.register(commands);
+      service.open('billing');
+      expect(labels(service)).toEqual([['Commands', ['Billing']]]);
+      service.setQuery('settings');
+      expect(service.sections()[0].items.map((i) => i.command.id)).toContain('c');
+    });
+  });
+
   describe('edge cases', () => {
     it('handles zero commands', () => {
       const service = setup();

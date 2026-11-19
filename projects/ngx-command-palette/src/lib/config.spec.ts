@@ -10,6 +10,7 @@ import {
   provideCommandPalette,
   resolveConfig,
 } from './config';
+import { matchCommand } from './fuzzy';
 
 describe('resolveConfig', () => {
   it('returns the defaults without options', () => {
@@ -41,6 +42,12 @@ describe('resolveConfig', () => {
       storageKey: 'k',
     });
     expect(resolveConfig({ recent: false }).recent).toBe(false);
+  });
+
+  it('uses the built-in matcher unless a filter is given', () => {
+    expect(resolveConfig().filter).toBe(matchCommand);
+    const filter = () => null;
+    expect(resolveConfig({ filter }).filter).toBe(filter);
   });
 
   it('does not change the shared defaults', () => {

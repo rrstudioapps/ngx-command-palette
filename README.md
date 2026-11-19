@@ -142,7 +142,27 @@ injectCommandProvider({
 | `recent` | `{ max?, storageKey? } \| false` | `{ max: 5, storageKey: 'rr-cp:recent' }` | "Recent" section shown when the query is empty. |
 | `debounceMs` | `number` | `200` | Debounce for async providers. |
 | `maxResults` | `number` | `50` | Max local results for a non-empty query. |
+| `filter` | `(query, command) => { score, indices } \| null` | built-in fuzzy search | Your own matching and ranking of local commands. See [Custom search](#custom-search). |
 | `labels` | `Partial<CommandPaletteLabels>` | English | All texts, for translations: `placeholder`, `dialog`, `listbox`, `empty`, `loading`, `recent`, `defaultGroup`, `results` (`'{count} results'`), `closeHint`. |
+
+### Custom search
+
+By default commands are matched with the built-in fuzzy search (label, keywords, description). Pass `filter`
+to decide what matches and how results are ranked. Return `null` to hide a command; a higher `score` ranks first,
+and `indices` are the label characters to highlight:
+
+```ts
+provideCommandPalette({
+  // Only commands whose label starts with the query
+  filter: (query, command) =>
+    command.label.toLowerCase().startsWith(query.toLowerCase())
+      ? { score: 1, indices: Array.from({ length: query.length }, (_, i) => i) }
+      : null,
+});
+```
+
+`filter` only applies to local commands with a non-empty query. Results of async providers keep the order
+returned by your API. To build on the default behavior, call the exported `matchCommand(query, command)`.
 
 ### `Command`
 

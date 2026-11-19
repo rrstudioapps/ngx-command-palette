@@ -22,7 +22,7 @@ import type {
   CommandSubscribable,
 } from './command.model';
 import { COMMAND_PALETTE_CONFIG, type CommandPaletteRecentOptions } from './config';
-import { fuzzyMatch, highlightSegments, matchCommand } from './fuzzy';
+import { fuzzyMatch, highlightSegments } from './fuzzy';
 import { RecentStore, type RecentEntry } from './recent-store';
 
 interface Registration {
@@ -223,7 +223,7 @@ export class CommandPaletteService {
     } else {
       const scored: CommandResult[] = [];
       for (const command of commands) {
-        const match = matchCommand(query, command);
+        const match = this.config.filter(query, command);
         if (!match) continue;
         const group = command.group ?? defaultGroup;
         scored.push(toResult(command, `g:${group}:${command.id}`, match.score, match.indices));
