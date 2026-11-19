@@ -65,4 +65,55 @@ describe('RecentStore', () => {
     store.clear();
     expect(store.load()).toEqual([]);
   });
+
+  it('stores nothing when max is 0 or negative', () => {
+    const storage = memoryStorage();
+    const store = new RecentStore('k', 0, storage);
+    expect(store.add({ id: 'a', label: 'A', route: '/' }, [])).toEqual([]);
+    expect(storage.data.has('k')).toBe(false);
+    storage.data.set('k', '[{"id":"a","label":"A"}]');
+    expect(store.load()).toEqual([]);
+    expect(new RecentStore('k', -1, storage).load()).toEqual([]);
+  });
+
+  it('truncates a saved list that is longer than max', () => {
+    const storage = memoryStorage();
+    storage.data.set('k', '[{"id":"a","label":"A"},{"id":"b","label":"B"},{"id":"c","label":"C"}]');
+    expect(new RecentStore('k', 2, storage).load().map((e) => e.id)).toEqual(['a', 'b']);
+  });
+
+  it('ignores a saved value that is not a list', () => {
+    const storage = memoryStorage();
+    storage.data.set('k', '{"id":"a","label":"A"}');
+    expect(new RecentStore('k', 5, storage).load()).toEqual([]);
+    storage.data.set('k', '"text"');
+    expect(new RecentStore('k', 5, storage).load()).toEqual([]);
+    storage.data.set('k', 'null');
+    expect(new RecentStore('k', 5, storage).load()).toEqual([]);
+  });
+
+  it('does not save routes that cannot be serialized', () => {
+    const storage = memoryStorage();
+    const circular: unknown[] = ['/c'];
+    circular.push(circular);
+    const store = new RecentStore('k', 5, storage);
+    expect(store.add({ id: 'c', label: 'C', route: circular }, [])).toEqual([
+      { id: 'c', label: 'C' },
+    ]);
+  });
+
+  it('saves optional fields only when they are set', () => {
+    const storage = memoryStorage();
+    const store = new RecentStore('k', 5, storage);
+    store.add({ id: 'a', label: 'A', description: 'Desc', group: '', route: '/a' }, []);
+    expect(store.load()).toEqual([{ id: 'a', label: 'A', description: 'Desc', route: '/a' }]);
+  });
+
+  it('keeps the entries it is given instead of reading the storage again', () => {
+    const storage = memoryStorage();
+    storage.data.set('k', '[{"id":"old","label":"Old"}]');
+    const store = new RecentStore('k', 5, storage);
+    const next = store.add({ id: 'new', label: 'New', route: '/n' }, []);
+    expect(next.map((e) => e.id)).toEqual(['new']);
+  });
 });

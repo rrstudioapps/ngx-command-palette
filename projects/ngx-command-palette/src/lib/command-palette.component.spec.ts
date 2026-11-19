@@ -238,4 +238,67 @@ describe('CommandPaletteComponent', () => {
     await fixture.whenStable();
     expect(q('.rr-cp-empty')!.textContent!.trim()).toBe('Nothing for "zzz"');
   });
+
+  it('toggles closed with the shortcut while open', async () => {
+    await setup();
+    await open();
+    keydown(document, 'k', { ctrlKey: true });
+    await fixture.whenStable();
+    expect(service.isOpen()).toBe(false);
+  });
+
+  it('ignores a held-down shortcut and IME composition', async () => {
+    await setup();
+    keydown(document, 'k', { ctrlKey: true, repeat: true });
+    keydown(document, 'k', { ctrlKey: true, isComposing: true });
+    expect(service.isOpen()).toBe(false);
+  });
+
+  it('does nothing on Enter when there are no results', async () => {
+    await setup();
+    await open();
+    service.setQuery('zzz');
+    await fixture.whenStable();
+    const event = keydown(input(), 'Enter');
+    await fixture.whenStable();
+    expect(event.defaultPrevented).toBe(true);
+    expect(runs).toEqual([]);
+    expect(service.isOpen()).toBe(true);
+  });
+
+  it('announces the number of results and the empty state', async () => {
+    await setup();
+    await open();
+    const live = () => q('[aria-live="polite"]')!.textContent!.trim();
+    expect(live()).toBe('3 results');
+    service.setQuery('zzz');
+    await fixture.whenStable();
+    expect(live()).toBe('No results found.');
+  });
+
+  it('brings the focus back to the input when it leaves the dialog', async () => {
+    await setup();
+    await open();
+    q('#trigger')!.focus();
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(input());
+  });
+
+  it('keeps the dialog usable with no commands at all', async () => {
+    await setup();
+    service.close();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideCommandPalette({ recent: false })],
+    });
+    service = TestBed.inject(CommandPaletteService);
+    fixture = TestBed.createComponent(Host);
+    await fixture.whenStable();
+    await open();
+    expect(options()).toHaveLength(0);
+    expect(q('.rr-cp-empty')).not.toBeNull();
+    keydown(input(), 'ArrowDown');
+    keydown(input(), 'Enter');
+    expect(service.isOpen()).toBe(true);
+  });
 });

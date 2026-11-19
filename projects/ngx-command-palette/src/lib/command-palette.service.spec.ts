@@ -195,6 +195,117 @@ describe('CommandPaletteService', () => {
     button.remove();
   });
 
+  describe('edge cases', () => {
+    it('handles zero commands', () => {
+      const service = setup();
+      expect(service.sections()).toEqual([]);
+      service.open('anything');
+      expect(service.sections()).toEqual([]);
+    });
+
+    it('updates the list when commands are added or removed while open', () => {
+      const service = setup();
+      service.open();
+      const remove = service.register([{ id: 'a', label: 'Alpha', run: noop }]);
+      expect(labels(service)).toEqual([['Commands', ['Alpha']]]);
+      remove();
+      expect(labels(service)).toEqual([]);
+    });
+
+    it('hides recents while searching and drops the ones that became disabled', async () => {
+      const service = setup();
+      const list = signal<Command[]>([
+        { id: 'a', label: 'Alpha', run: noop },
+        { id: 'b', label: 'Beta', run: noop },
+      ]);
+      service.register(list);
+      await service.execute(list()[0]);
+      service.open();
+      expect(service.sections()[0].label).toBe('Recent');
+      service.setQuery('be');
+      expect(service.sections().map((s) => s.label)).not.toContain('Recent');
+      service.setQuery('');
+      list.set([
+        { id: 'a', label: 'Alpha', disabled: true, run: noop },
+        { id: 'b', label: 'Beta', run: noop },
+      ]);
+      expect(service.sections().map((s) => s.label)).not.toContain('Recent');
+    });
+
+    it('caps the recents at max, most recent first', async () => {
+      const service = setup({ recent: { max: 2 } });
+      const commands: Command[] = ['a', 'b', 'c'].map((id) => ({
+        id,
+        label: id.toUpperCase(),
+        run: noop,
+      }));
+      service.register(commands);
+      for (const command of commands) await service.execute(command);
+      service.open();
+      expect(labels(service)[0]).toEqual(['Recent', ['C', 'B']]);
+    });
+
+    it('closes before running a command and propagates its errors', async () => {
+      const service = setup();
+      service.open();
+      const failing: Command = {
+        id: 'x',
+        label: 'X',
+        run: () => {
+          throw new Error('boom');
+        },
+      };
+      await expect(service.execute(failing)).rejects.toThrow('boom');
+      expect(service.isOpen()).toBe(false);
+    });
+
+    it('closing twice and toggling stay consistent', () => {
+      const service = setup();
+      service.close();
+      service.open('a');
+      service.open('b');
+      expect(service.query()).toBe('b');
+      service.close();
+      service.close();
+      expect(service.isOpen()).toBe(false);
+    });
+
+    it('copes with thousands of commands and still respects maxResults', () => {
+      const service = setup({ maxResults: 20, recent: false });
+      service.register(
+        Array.from({ length: 5000 }, (_, i) => ({
+          id: `c${i}`,
+          label: `Command number ${i}`,
+          run: noop,
+        })),
+      );
+      service.open('4999');
+      const items = service.sections().flatMap((s) => s.items);
+      expect(items.length).toBeGreaterThan(0);
+      expect(items.length).toBeLessThanOrEqual(20);
+      expect(items[0].command.id).toBe('c4999');
+    });
+
+    it('works when localStorage is not available (e.g. SSR)', async () => {
+      TestBed.configureTestingModule({ providers: [provideRouter([]), provideCommandPalette()] });
+      vi.stubGlobal('localStorage', undefined);
+      try {
+        const service = TestBed.inject(CommandPaletteService);
+        const command: Command = { id: 'a', label: 'Alpha', run: noop };
+        service.register([command]);
+        await service.execute(command);
+        service.open();
+        // Nothing can be saved, so recents live in memory only; nothing throws
+        expect(labels(service)).toEqual([
+          ['Recent', ['Alpha']],
+          ['Commands', ['Alpha']],
+        ]);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+  });
+
   describe('async providers', () => {
     function provider(
       impl: CommandProvider['search'],
@@ -294,6 +405,74 @@ describe('CommandPaletteService', () => {
       await vi.advanceTimersByTimeAsync(500);
       expect(search).not.toHaveBeenCalled();
       expect(service.loading()).toBe(false);
+    });
+
+    it('survives a provider that throws synchronously', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      service.registerProvider(
+        provider(() => {
+          throw new Error('boom');
+        }),
+      );
+      service.open('a');
+      await vi.advanceTimersByTimeAsync(100);
+      expect(service.loading()).toBe(false);
+      expect(service.sections()).toEqual([]);
+    });
+
+    it('searches as soon as it is registered while the palette is open', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      const search = vi.fn(async () => [{ id: 'c1', label: 'Customer', route: '/c' }] as Command[]);
+      service.open('cu');
+      service.registerProvider(provider(search));
+      await vi.advanceTimersByTimeAsync(100);
+      expect(search).toHaveBeenCalledTimes(1);
+      expect(labels(service)).toEqual([['Customers', ['Customer']]]);
+    });
+
+    it('removing a provider drops its results and cancels its request', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      const search = vi.fn(async () => [{ id: 'c1', label: 'Customer', route: '/c' }] as Command[]);
+      const remove = service.registerProvider(provider(search));
+      service.open('cu');
+      await vi.advanceTimersByTimeAsync(100);
+      expect(labels(service)).toEqual([['Customers', ['Customer']]]);
+      remove();
+      expect(service.sections()).toEqual([]);
+      expect(service.loading()).toBe(false);
+      service.setQuery('cus');
+      await vi.advanceTimersByTimeAsync(500);
+      expect(search).toHaveBeenCalledTimes(1);
+    });
+
+    it('a provider registered again with the same id replaces the old one', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      const first = vi.fn(async () => [] as Command[]);
+      const second = vi.fn(async () => [] as Command[]);
+      service.registerProvider(provider(first));
+      service.registerProvider(provider(second));
+      service.open('a');
+      await vi.advanceTimersByTimeAsync(100);
+      expect(first).not.toHaveBeenCalled();
+      expect(second).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not apply maxResults to provider results', async () => {
+      vi.useFakeTimers();
+      const service = setup({ maxResults: 1 });
+      const items = Array.from({ length: 5 }, (_, i) => ({
+        id: `c${i}`,
+        label: `Customer ${i}`,
+        route: '/c',
+      })) as Command[];
+      service.registerProvider(provider(async () => items));
+      service.open('cu');
+      await vi.advanceTimersByTimeAsync(100);
+      expect(service.sections()[0].items).toHaveLength(5);
     });
   });
 });
