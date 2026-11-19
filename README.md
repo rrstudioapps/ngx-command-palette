@@ -176,6 +176,7 @@ returned by your API. To build on the default behavior, call the exported `match
 | `shortcut` | `string[]?` | Keys shown on the right, e.g. `['⌘', 'S']`. Display only. |
 | `keywords` | `string[]?` | Extra search terms, not shown. |
 | `disabled` | `boolean?` | Shown but not selectable. |
+| `hidden` | `boolean \| (() => boolean)?` | Not listed and not searched. A function or a signal hides it depending on your app state, e.g. `hidden: () => !user()`. |
 | `route` + `navigationExtras` | `string \| any[]`, `NavigationExtras?` | Navigate with the Angular router… |
 | `run` | `(ctx: { query }) => void \| Promise` | …or run a function. |
 

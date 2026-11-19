@@ -217,12 +217,14 @@ export class CommandPaletteService {
       if (recent.length)
         sections.push({ id: RECENT_SECTION_ID, label: this.config.labels.recent, items: recent });
       for (const command of commands) {
+        if (isHidden(command)) continue;
         const group = command.group ?? defaultGroup;
         push(group, toResult(command, `g:${group}:${command.id}`, 0, []));
       }
     } else {
       const scored: CommandResult[] = [];
       for (const command of commands) {
+        if (isHidden(command)) continue;
         const match = this.config.filter(query, command);
         if (!match) continue;
         const group = command.group ?? defaultGroup;
@@ -241,16 +243,18 @@ export class CommandPaletteService {
     for (const provider of this.providers()) {
       const state = states.get(provider.id);
       if (!state?.items.length) continue;
-      const items = state.items.map((command) => {
-        const match = query ? fuzzyMatch(query, command.label) : null;
-        return toResult(
-          command,
-          `p:${provider.id}:${command.id}`,
-          match?.score ?? 0,
-          match?.indices ?? [],
-        );
-      });
-      sections.push({ id: `p:${provider.id}`, label: provider.group, items });
+      const items = state.items
+        .filter((command) => !isHidden(command))
+        .map((command) => {
+          const match = query ? fuzzyMatch(query, command.label) : null;
+          return toResult(
+            command,
+            `p:${provider.id}:${command.id}`,
+            match?.score ?? 0,
+            match?.indices ?? [],
+          );
+        });
+      if (items.length) sections.push({ id: `p:${provider.id}`, label: provider.group, items });
     }
     return sections;
   }
@@ -272,7 +276,9 @@ export class CommandPaletteService {
               ...(entry.description ? { description: entry.description } : {}),
             }
           : undefined);
-      if (command && !command.disabled) results.push(toResult(command, `r:${entry.id}`, 0, []));
+      if (command && !command.disabled && !isHidden(command)) {
+        results.push(toResult(command, `r:${entry.id}`, 0, []));
+      }
     }
     return results;
   }
@@ -357,6 +363,12 @@ function toResult(
   indices: readonly number[],
 ): CommandResult {
   return { command, key, score, indices, segments: highlightSegments(command.label, indices) };
+}
+
+/** Reads `hidden` (a boolean, a function or a signal) so that signals are tracked by the caller. */
+function isHidden(command: Command): boolean {
+  const { hidden } = command;
+  return typeof hidden === 'function' ? hidden() : !!hidden;
 }
 
 function isSubscribable<T>(value: unknown): value is CommandSubscribable<T> {

@@ -27,6 +27,11 @@ interface CommandBase {
   readonly keywords?: readonly string[];
   /** A disabled command is shown but cannot be executed or selected. */
   readonly disabled?: boolean;
+  /**
+   * A hidden command is not listed and not searched (unlike `disabled`, which shows it greyed out).
+   * Pass a function or a signal to hide it depending on your app state, e.g. `hidden: () => !user()`.
+   */
+  readonly hidden?: boolean | (() => boolean);
 }
 
 /** A command that navigates to an Angular route. */

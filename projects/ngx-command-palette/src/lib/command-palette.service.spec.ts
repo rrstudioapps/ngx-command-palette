@@ -195,6 +195,81 @@ describe('CommandPaletteService', () => {
     button.remove();
   });
 
+  describe('hidden commands', () => {
+    it('are not listed or searched, unlike disabled ones', () => {
+      const service = setup({ recent: false });
+      service.register([
+        { id: 'a', label: 'Alpha', run: noop },
+        { id: 'b', label: 'Alpha secret', hidden: true, run: noop },
+        { id: 'c', label: 'Alpha locked', disabled: true, run: noop },
+      ]);
+      service.open();
+      expect(labels(service)).toEqual([['Commands', ['Alpha', 'Alpha locked']]]);
+      service.setQuery('alpha');
+      expect(labels(service)[0][1]).toEqual(['Alpha', 'Alpha locked']);
+      // Still registered: only the list hides it
+      expect(service.commands().map((c) => c.id)).toEqual(['a', 'b', 'c']);
+    });
+
+    it('follow a signal or a function, updating the list', () => {
+      const service = setup({ recent: false });
+      const loggedIn = signal(false);
+      const flag = signal(false);
+      service.register([
+        { id: 'a', label: 'Alpha', run: noop },
+        { id: 'b', label: 'Account', hidden: () => !loggedIn(), run: noop },
+        { id: 'c', label: 'Admin', hidden: flag, run: noop },
+      ]);
+      service.open();
+      const visible = () => labels(service)[0][1];
+      expect(visible()).toEqual(['Alpha', 'Admin']);
+      loggedIn.set(true);
+      expect(visible()).toEqual(['Alpha', 'Account', 'Admin']);
+      flag.set(true);
+      expect(visible()).toEqual(['Alpha', 'Account']);
+      loggedIn.set(false);
+      expect(visible()).toEqual(['Alpha']);
+      flag.set(false);
+      expect(visible()).toEqual(['Alpha', 'Admin']);
+    });
+
+    it('are left out of the recents until they are visible again', async () => {
+      const service = setup();
+      const hidden = signal(false);
+      const command: Command = { id: 'a', label: 'Alpha', hidden, run: noop };
+      service.register([command]);
+      await service.execute(command);
+      service.open();
+      expect(service.sections()[0].label).toBe('Recent');
+      hidden.set(true);
+      expect(service.sections()).toEqual([]);
+      hidden.set(false);
+      expect(service.sections()[0].label).toBe('Recent');
+    });
+
+    it('are removed from provider results, and an empty section is not shown', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      service.registerProvider({
+        id: 'p',
+        group: 'Remote',
+        search: async () =>
+          [
+            { id: 'r1', label: 'Visible', route: '/1' },
+            { id: 'r2', label: 'Hidden', hidden: true, route: '/2' },
+          ] as Command[],
+      });
+      service.registerProvider({
+        id: 'q',
+        group: 'Only hidden',
+        search: async () => [{ id: 'r3', label: 'Nope', hidden: true, route: '/3' }] as Command[],
+      });
+      service.open('x');
+      await vi.advanceTimersByTimeAsync(100);
+      expect(labels(service)).toEqual([['Remote', ['Visible']]]);
+    });
+  });
+
   describe('custom filter', () => {
     const commands: Command[] = [
       { id: 'a', label: 'Open settings', run: noop },

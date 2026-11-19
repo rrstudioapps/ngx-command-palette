@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 ### Added
 
 - `filter` option of `provideCommandPalette()` to replace the matching and ranking of local commands.
+- `hidden` property on commands (boolean, function or signal) to leave a command out of the list, the search and the recents.
 
 ## [0.1.0] - 2026-11-19
 
