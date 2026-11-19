@@ -145,6 +145,13 @@ injectCommandProvider({
 | `filter` | `(query, command) => { score, indices } \| null` | built-in fuzzy search | Your own matching and ranking of local commands. See [Custom search](#custom-search). |
 | `labels` | `Partial<CommandPaletteLabels>` | English | All texts, for translations: `placeholder`, `dialog`, `listbox`, `empty`, `loading`, `recent`, `defaultGroup`, `results` (`'{count} results'`), `closeHint`, `back`, `level` (`'{name}: {count} results'`), `submenu`. |
 
+### Many commands
+
+Commands are scored on every keystroke and, with an empty search, all of them are rendered. That stays
+smooth up to a few hundred commands (about a thousand open in roughly 0.2 s on a slow virtual server).
+With a couple of thousand or more, group them in [sub-palettes](#sub-palettes) or load them with an async
+[provider](#commandprovider) instead.
+
 ### Custom search
 
 By default commands are matched with the built-in fuzzy search (label, keywords, description). Pass `filter`
