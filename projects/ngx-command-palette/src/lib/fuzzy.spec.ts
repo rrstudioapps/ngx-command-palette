@@ -114,3 +114,38 @@ describe('matchCommand', () => {
     expect(matchCommand('zzz', command)).toBeNull();
   });
 });
+
+describe('fuzzyMatch with reused tables', () => {
+  it('does not depend on what was matched before', () => {
+    const before = fuzzyMatch('abc', 'a-b-c');
+    // A long text grows the internal tables; a short one after it must not see stale data
+    fuzzyMatch('hello', 'x'.repeat(3000) + 'hello world');
+    fuzzyMatch('zzz', 'zz');
+    expect(fuzzyMatch('abc', 'a-b-c')).toEqual(before);
+  });
+
+  it('matches in very long texts and reports the right indices', () => {
+    const match = fuzzyMatch('hello', 'x'.repeat(2000) + 'hello');
+    expect(match?.indices).toEqual([2000, 2001, 2002, 2003, 2004]);
+  });
+
+  it('keeps indices in UTF-16 units around emoji', () => {
+    expect(fuzzyMatch('b', 'a😀b')?.indices).toEqual([3]);
+  });
+
+  it('ignores accents and case in both the text and the query', () => {
+    expect(fuzzyMatch('cafe', 'Café Crème')?.indices).toEqual([0, 1, 2, 3]);
+    expect(fuzzyMatch('ÉCLAIR', 'eclair')?.indices).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+
+  it('returns null when the letters are not in order, without scoring', () => {
+    expect(fuzzyMatch('ba', 'ab')).toBeNull();
+    expect(fuzzyMatch('abc', 'ab')).toBeNull();
+  });
+
+  it('ignores spaces in the query', () => {
+    expect(fuzzyMatch('o s', 'Open settings')?.indices).toEqual(
+      fuzzyMatch('os', 'Open settings')?.indices,
+    );
+  });
+});

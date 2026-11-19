@@ -25,6 +25,24 @@ function fold(char: string): string {
   return (base[0] ?? char).toLowerCase();
 }
 
+/**
+ * Folds a whole string. ASCII (the common case) has no accents, so the native `toLowerCase`
+ * does the job and keeps the length; anything else is folded character by character.
+ */
+function foldText(text: string): string {
+  // eslint-disable-next-line no-control-regex -- the range is the ASCII block on purpose
+  if (/^[\x00-\x7f]*$/.test(text)) return text.toLowerCase();
+  let out = '';
+  // eslint-disable-next-line @typescript-eslint/prefer-for-of -- for-of iterates code points and would shift the indices
+  for (let i = 0; i < text.length; i++) out += fold(text[i]);
+  return out;
+}
+
+/** The query without spaces, folded. Do it once per search, not once per command. */
+function foldQuery(query: string): string {
+  return foldText(query.replace(/\s+/g, ''));
+}
+
 function isWordStart(text: string, i: number): boolean {
   if (i === 0) return true;
   const prev = text[i - 1];
@@ -39,73 +57,104 @@ function isWordStart(text: string, i: number): boolean {
  * `text` in order. Returns the best scoring alignment or `null`. Case and accent insensitive.
  */
 export function fuzzyMatch(query: string, text: string): FuzzyMatch | null {
-  const q = query.replace(/\s+/g, '').split('').map(fold);
+  return matchFolded(foldQuery(query), text);
+}
+
+// Scoring tables, reused between calls: matching runs once per command on every keystroke,
+// and allocating them each time dominated the cost with thousands of commands.
+let tableM = new Float64Array(512);
+let tableD = new Float64Array(512);
+let tableC = new Uint8Array(512);
+let tableK = new Int32Array(512);
+let tableB = new Float64Array(128);
+
+function ensureTables(size: number, width: number): void {
+  if (tableM.length < size) {
+    const length = Math.max(size, tableM.length * 2);
+    tableM = new Float64Array(length);
+    tableD = new Float64Array(length);
+    tableC = new Uint8Array(length);
+    tableK = new Int32Array(length);
+  }
+  if (tableB.length < width) tableB = new Float64Array(Math.max(width, tableB.length * 2));
+}
+
+/** `fuzzyMatch` for a query that is already folded (see `foldQuery`). */
+function matchFolded(q: string, text: string): FuzzyMatch | null {
   if (q.length === 0) return { score: 0, indices: [] };
   // Work on UTF-16 units so indices stay those of `text`.
-  const t: string[] = [];
-  // eslint-disable-next-line @typescript-eslint/prefer-for-of -- for-of iterates code points and would shift the indices
-  for (let i = 0; i < text.length; i++) t.push(fold(text[i]));
+  const t = foldText(text);
   const m = q.length;
   const n = t.length;
   if (m > n) return null;
-
-  const NEG = -Infinity;
-  // M[i][j]: best score with q[i] matched to t[j]
-  // D[i][j]: best score with q[0..i] matched within t[0..j] (minus a penalty for characters skipped after)
-  const M: Float64Array[] = [];
-  const D: Float64Array[] = [];
-  const bonus = new Float64Array(n);
-  for (let j = 0; j < n; j++) {
-    bonus[j] =
-      SCORE_CHAR +
-      (isWordStart(text, j) ? BONUS_WORD_START : 0) +
-      (j === 0 ? BONUS_STRING_START : 0);
+  // Cheap exit before the scoring tables: most commands do not contain the letters in order
+  for (let i = 0, from = 0; i < m; i++) {
+    from = t.indexOf(q[i], from) + 1;
+    if (from === 0) return null;
   }
 
+  const NEG = -Infinity;
+  const size = m * n;
+  ensureTables(size, n);
+  // Row i starts at i * n. M: best score with q[i] matched to t[j].
+  // D: best score with q[0..i] matched within t[0..j] (minus a penalty for characters skipped after).
+  const M = tableM;
+  const D = tableD;
   // For the traceback: where each M comes from (consecutive or jump) and which k gives each D
-  const consec: Uint8Array[] = [];
-  const Dk: Int32Array[] = [];
+  const consec = tableC;
+  const Dk = tableK;
+  M.fill(NEG, 0, size);
+  D.fill(NEG, 0, size);
+  consec.fill(0, 0, size);
+  Dk.fill(-1, 0, size);
+  // Computed when a letter matches (always positive, so -1 means "not yet")
+  const bonus = tableB;
+  bonus.fill(-1, 0, n);
+  const bonusAt = (j: number): number =>
+    bonus[j] >= 0
+      ? bonus[j]
+      : (bonus[j] =
+          SCORE_CHAR +
+          (isWordStart(text, j) ? BONUS_WORD_START : 0) +
+          (j === 0 ? BONUS_STRING_START : 0));
+
   for (let i = 0; i < m; i++) {
-    const Mi = new Float64Array(n).fill(NEG);
-    const Di = new Float64Array(n).fill(NEG);
-    const Ci = new Uint8Array(n);
-    const Ki = new Int32Array(n).fill(-1);
+    const row = i * n;
+    const prev = row - n;
     for (let j = i; j < n; j++) {
+      const at = row + j;
       if (t[j] === q[i]) {
         if (i === 0) {
-          Mi[j] = bonus[j] - PENALTY_LEADING * j;
+          M[at] = bonusAt(j) - PENALTY_LEADING * j;
         } else if (j > 0) {
-          const consecutive = M[i - 1][j - 1] + BONUS_CONSECUTIVE;
-          const jump = D[i - 1][j - 1];
+          const consecutive = M[prev + j - 1] + BONUS_CONSECUTIVE;
+          const jump = D[prev + j - 1];
           if (consecutive >= jump && consecutive > NEG) {
-            Mi[j] = consecutive + bonus[j];
-            Ci[j] = 1;
+            M[at] = consecutive + bonusAt(j);
+            consec[at] = 1;
           } else if (jump > NEG) {
-            Mi[j] = jump + bonus[j];
+            M[at] = jump + bonusAt(j);
           }
         }
       }
-      const carried = j > 0 ? Di[j - 1] - PENALTY_GAP : NEG;
-      if (Mi[j] > NEG && Mi[j] >= carried) {
-        Di[j] = Mi[j];
-        Ki[j] = j;
+      const carried = j > 0 ? D[at - 1] - PENALTY_GAP : NEG;
+      if (M[at] > NEG && M[at] >= carried) {
+        D[at] = M[at];
+        Dk[at] = j;
       } else if (j > 0) {
-        Di[j] = carried;
-        Ki[j] = Ki[j - 1];
+        D[at] = carried;
+        Dk[at] = Dk[at - 1];
       }
     }
-    M.push(Mi);
-    D.push(Di);
-    consec.push(Ci);
-    Dk.push(Ki);
   }
 
   // End of the alignment: the best M on the last row
   let end = -1;
   let best = NEG;
+  const last = (m - 1) * n;
   for (let j = m - 1; j < n; j++) {
-    if (M[m - 1][j] > best) {
-      best = M[m - 1][j];
+    if (M[last + j] > best) {
+      best = M[last + j];
       end = j;
     }
   }
@@ -117,7 +166,7 @@ export function fuzzyMatch(query: string, text: string): FuzzyMatch | null {
   for (let i = m - 1; i >= 0; i--) {
     indices[i] = j;
     if (i === 0) break;
-    j = consec[i][j] ? j - 1 : Dk[i - 1][j - 1];
+    j = consec[i * n + j] ? j - 1 : Dk[(i - 1) * n + j - 1];
   }
 
   // Small bonus for short strings: with equal matches the text closest to the query wins
@@ -154,8 +203,7 @@ const WEIGHT_DESCRIPTION = 0.5;
  */
 const MIN_SECONDARY_QUALITY = 4;
 
-function strongEnough(match: FuzzyMatch | null, query: string): match is FuzzyMatch {
-  const length = query.replace(/\s+/g, '').length;
+function strongEnough(match: FuzzyMatch | null, length: number): match is FuzzyMatch {
   return !!match && length > 0 && match.score / length >= MIN_SECONDARY_QUALITY;
 }
 
@@ -164,17 +212,18 @@ function strongEnough(match: FuzzyMatch | null, query: string): match is FuzzyMa
  * `indices` refer to the label (empty when only keywords/description matched).
  */
 export function matchCommand(query: string, command: Command): FuzzyMatch | null {
-  const label = fuzzyMatch(query, command.label);
+  const q = foldQuery(query);
+  const label = matchFolded(q, command.label);
   let best: FuzzyMatch | null = label;
   for (const keyword of command.keywords ?? []) {
-    const m = fuzzyMatch(query, keyword);
-    if (strongEnough(m, query) && (!best || m.score * WEIGHT_KEYWORD > best.score)) {
+    const m = matchFolded(q, keyword);
+    if (strongEnough(m, q.length) && (!best || m.score * WEIGHT_KEYWORD > best.score)) {
       best = { score: m.score * WEIGHT_KEYWORD, indices: label?.indices ?? [] };
     }
   }
   if (command.description) {
-    const m = fuzzyMatch(query, command.description);
-    if (strongEnough(m, query) && (!best || m.score * WEIGHT_DESCRIPTION > best.score)) {
+    const m = matchFolded(q, command.description);
+    if (strongEnough(m, q.length) && (!best || m.score * WEIGHT_DESCRIPTION > best.score)) {
       best = { score: m.score * WEIGHT_DESCRIPTION, indices: label?.indices ?? [] };
     }
   }

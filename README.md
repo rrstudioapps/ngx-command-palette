@@ -147,10 +147,10 @@ injectCommandProvider({
 
 ### Many commands
 
-Commands are scored on every keystroke and, with an empty search, all of them are rendered. That stays
-smooth up to a few hundred commands (about a thousand open in roughly 0.2 s on a slow virtual server).
-With a couple of thousand or more, group them in [sub-palettes](#sub-palettes) or load them with an async
-[provider](#commandprovider) instead.
+Searching is cheap: with 5,000 commands a keystroke costs a few tens of milliseconds. With an empty search,
+though, every command is rendered, which takes roughly 0.2 s for a thousand commands and 0.6 s for five
+thousand on a slow virtual server. That stays smooth up to a few thousand commands; beyond that, group them in
+[sub-palettes](#sub-palettes) or load them with an async [provider](#commandprovider) instead.
 
 ### Custom search
 
