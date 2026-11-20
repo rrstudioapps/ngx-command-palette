@@ -20,7 +20,7 @@ jobs:
           node-version: 24
           cache: npm
           registry-url: https://registry.npmjs.org
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Tag and package version must match
         run: |
           version=$(node -p "require('./projects/ngx-command-palette/package.json').version")

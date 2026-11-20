@@ -17,10 +17,54 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
       - name: Check the package contents
         run: npm pack --dry-run ./dist/ngx-command-palette
+
+  # The peer range starts at Angular 21: test and build against its latest release too
+  angular-compat:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        angular: [21]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Install Angular ${{ matrix.angular }}
+        run: >
+          npm install --no-save --ignore-scripts --legacy-peer-deps
+          @angular/common@${{ matrix.angular }}
+          @angular/compiler@${{ matrix.angular }}
+          @angular/core@${{ matrix.angular }}
+          @angular/forms@${{ matrix.angular }}
+          @angular/platform-browser@${{ matrix.angular }}
+          @angular/router@${{ matrix.angular }}
+          @angular/compiler-cli@${{ matrix.angular }}
+          @angular/build@${{ matrix.angular }}
+          @angular/cli@${{ matrix.angular }}
+          ng-packagr@${{ matrix.angular }}
+      - run: npm test
+      - run: npm run build:lib
+
+  # Real browser: keyboard flows and axe-core on the demo, in light and dark themes
+  e2e:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright-core install --with-deps chromium
+      - run: npm run build:demo
+      - run: npm run e2e
