@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
+## [0.3.1] - 2026-11-20
+
+### Changed
+
+- README: refreshed screenshots and demo GIF (now showing a sub-palette), and a shorter, less promotional closing section.
+
 ## [0.3.0] - 2026-11-20
 
 ### Added
