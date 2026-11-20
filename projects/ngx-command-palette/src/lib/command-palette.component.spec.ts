@@ -109,6 +109,28 @@ describe('CommandPaletteComponent', () => {
     field.remove();
   });
 
+  it('runs command hotkeys, but not Alt-only ones while typing in a field', async () => {
+    localStorage.clear();
+    TestBed.configureTestingModule({ providers: [provideRouter([]), provideCommandPalette()] });
+    service = TestBed.inject(CommandPaletteService);
+    const hits: string[] = [];
+    service.register([
+      { id: 'a', label: 'A', hotkey: 'alt+t', run: () => void hits.push('alt') },
+      { id: 'b', label: 'B', hotkey: 'ctrl+s', run: () => void hits.push('ctrl') },
+    ]);
+    fixture = TestBed.createComponent(Host);
+    await fixture.whenStable();
+    const field = document.createElement('input');
+    document.body.appendChild(field);
+    keydown(field, 't', { altKey: true });
+    expect(hits).toEqual([]);
+    keydown(field, 's', { ctrlKey: true });
+    expect(hits).toEqual(['ctrl']);
+    keydown(document.body, 't', { altKey: true });
+    expect(hits).toEqual(['ctrl', 'alt']);
+    field.remove();
+  });
+
   it('has dialog, combobox and listbox semantics', async () => {
     await setup();
     await open();
@@ -418,6 +440,39 @@ describe('CommandPaletteComponent', () => {
       expect(q('.rr-cp-path')).toBeNull();
       expect(document.activeElement).toBe(input());
       expect(q('.rr-cp-path-back')).toBeNull();
+    });
+  });
+
+  describe('prompt', () => {
+    it('shows the step, runs with the typed value on Enter and leaves it with Backspace', async () => {
+      await setup();
+      const values: (string | undefined)[] = [];
+      service.register([
+        { id: 'p', label: 'Go to user', prompt: 'User id…', run: (c) => void values.push(c.value) },
+      ]);
+      service.open('go');
+      fixture.detectChanges();
+      keydown(input(), 'Enter');
+      fixture.detectChanges();
+      expect(input().placeholder).toBe('User id…');
+      expect(q('.rr-cp-path-current')?.textContent).toContain('Go to user');
+      keydown(input(), 'Backspace');
+      fixture.detectChanges();
+      expect(input().placeholder).not.toBe('User id…');
+      expect(q('.rr-cp-path-back')).toBeNull();
+      service.setQuery('go');
+      fixture.detectChanges();
+      keydown(input(), 'Enter');
+      fixture.detectChanges();
+      keydown(input(), 'Enter');
+      expect(values).toEqual([]);
+      input().value = '7';
+      input().dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      keydown(input(), 'Enter');
+      await fixture.whenStable();
+      expect(values).toEqual(['7']);
+      expect(service.isOpen()).toBe(false);
     });
   });
 });

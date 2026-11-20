@@ -8,6 +8,8 @@ import type { NavigationExtras } from '@angular/router';
 export interface CommandRunContext {
   /** The search text typed when the command was executed. */
   readonly query: string;
+  /** The text typed in the second step of a command with `prompt`. Not set for other commands. */
+  readonly value?: string;
 }
 
 interface CommandBase {
@@ -21,12 +23,24 @@ interface CommandBase {
   readonly description?: string;
   /** Text/emoji (or an icon font ligature) or a template rendered before the label. */
   readonly icon?: string | TemplateRef<unknown>;
-  /** Keys shown on the right, e.g. `['⌘', 'S']`. Display only: it does not bind anything. */
+  /** Keys shown on the right, e.g. `['⌘', 'S']`. Display only: use `hotkey` to bind a key. */
   readonly shortcut?: readonly string[];
+  /**
+   * Global key combination(s) that run the command even while the palette is closed, e.g. `'mod+s'`
+   * (same syntax as the `shortcut` option). It needs Ctrl, ⌘ or Alt, and Alt-only combinations are
+   * ignored while typing in a text field (on macOS Alt types special characters). Ignored by commands
+   * that open a sub-palette, by disabled or hidden commands and while the palette is open. Without `shortcut`, the keys are shown on the row.
+   */
+  readonly hotkey?: string | readonly string[];
   /** Extra words matched by the search but not shown. */
   readonly keywords?: readonly string[];
   /** A disabled command is shown but cannot be executed or selected. */
   readonly disabled?: boolean;
+  /**
+   * A pinned command is also listed in a "Pinned" section at the top while the search is empty.
+   * Pass a function or a signal to pin it depending on your app state.
+   */
+  readonly pinned?: boolean | (() => boolean);
   /**
    * A hidden command is not listed and not searched (unlike `disabled`, which shows it greyed out).
    * Pass a function or a signal to hide it depending on your app state, e.g. `hidden: () => !user()`.
@@ -39,12 +53,19 @@ export interface RouteCommand extends CommandBase {
   readonly route: string | readonly unknown[];
   readonly navigationExtras?: NavigationExtras;
   readonly run?: never;
+  readonly prompt?: never;
   readonly children?: never;
 }
 
 /** A command that runs a function. */
 export interface ActionCommand extends CommandBase {
   readonly run: (context: CommandRunContext) => void | Promise<unknown>;
+  /**
+   * Asks for a value before running: selecting the command opens a second step whose search field
+   * has this text as placeholder. Enter runs the command with the typed text in `context.value`
+   * (nothing happens while it is empty). Back and Backspace leave the step.
+   */
+  readonly prompt?: string;
   readonly route?: never;
   readonly children?: never;
 }
@@ -57,6 +78,7 @@ export interface ParentCommand extends CommandBase {
   readonly children: readonly Command[];
   readonly route?: never;
   readonly run?: never;
+  readonly prompt?: never;
 }
 
 export type Command = RouteCommand | ActionCommand | ParentCommand;

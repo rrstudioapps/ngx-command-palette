@@ -847,4 +847,153 @@ describe('CommandPaletteService', () => {
       expect(service.sections()[0].items).toHaveLength(5);
     });
   });
+
+  describe('prefixes', () => {
+    const commands: Command[] = [
+      { id: 'a', label: 'Save file', group: 'Actions', run: noop },
+      { id: 'b', label: 'Settings page', group: 'Pages', route: '/settings' },
+      { id: 'c', label: 'Save settings', group: 'Pages', run: noop },
+    ];
+
+    it('restricts the list by kind or section and strips the prefix from the search', () => {
+      const service = setup({
+        prefixes: [
+          { prefix: '>', kind: 'action' },
+          { prefix: '/', groups: ['Pages'] },
+        ],
+      });
+      service.register(commands);
+      service.open('>');
+      expect(service.activePrefix()?.prefix).toBe('>');
+      expect(labels(service)).toEqual([
+        ['Actions', ['Save file']],
+        ['Pages', ['Save settings']],
+      ]);
+      service.setQuery('> sett');
+      expect(labels(service)).toEqual([['Pages', ['Save settings']]]);
+      service.setQuery('/ save');
+      expect(labels(service)).toEqual([['Pages', ['Save settings']]]);
+      service.setQuery('save');
+      expect(service.activePrefix()).toBeNull();
+      expect(service.sections().flatMap((s) => s.items)).toHaveLength(2);
+    });
+
+    it('passes the search without the prefix to run()', async () => {
+      const run = vi.fn();
+      const service = setup({ prefixes: [{ prefix: '>' }] });
+      service.register([{ id: 'x', label: 'Do it', run }]);
+      service.open('> do');
+      await service.execute(service.commands()[0]);
+      expect(run).toHaveBeenCalledWith({ query: 'do' });
+    });
+  });
+
+  describe('hotkey', () => {
+    const key = (init: KeyboardEventInit) => new KeyboardEvent('keydown', init);
+
+    it('runs the command only while the palette is closed, not when disabled or hidden', () => {
+      const run = vi.fn();
+      const service = setup();
+      service.register([
+        { id: 'a', label: 'A', hotkey: 'mod+s', run },
+        { id: 'b', label: 'B', hotkey: 'ctrl+d', disabled: true, run },
+        { id: 'c', label: 'C', hotkey: ['ctrl+h', 'ctrl+j'], hidden: true, run },
+      ]);
+      expect(service.runHotkey(key({ key: 's', ctrlKey: true }), false)).toBe(true);
+      expect(run).toHaveBeenCalledTimes(1);
+      expect(service.runHotkey(key({ key: 'd', ctrlKey: true }), false)).toBe(false);
+      expect(service.runHotkey(key({ key: 'j', ctrlKey: true }), false)).toBe(false);
+      service.open();
+      expect(service.runHotkey(key({ key: 's', ctrlKey: true }), false)).toBe(false);
+      expect(run).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores sub-palette parents', () => {
+      const service = setup();
+      service.register([{ id: 'p', label: 'P', hotkey: 'ctrl+p', children: [] }]);
+      expect(service.runHotkey(key({ key: 'p', ctrlKey: true }), false)).toBe(false);
+    });
+  });
+
+  describe('pinned', () => {
+    it('lists pinned commands first while the search is empty, and not again in Recent', async () => {
+      const service = setup();
+      const pinned = signal(true);
+      service.register([
+        { id: 'a', label: 'A', run: noop },
+        { id: 'b', label: 'B', pinned: () => pinned(), run: noop },
+        { id: 'c', label: 'C', pinned: true, hidden: true, run: noop },
+      ]);
+      service.open();
+      expect(labels(service)).toEqual([
+        ['Pinned', ['B']],
+        ['Commands', ['A', 'B']],
+      ]);
+      await service.execute(service.commands()[1]);
+      service.open();
+      expect(labels(service)[0]).toEqual(['Pinned', ['B']]);
+      expect(labels(service).some(([l]) => l === 'Recent')).toBe(false);
+      pinned.set(false);
+      expect(labels(service)[0][0]).toBe('Recent');
+      service.setQuery('b');
+      expect(labels(service).some(([l]) => l === 'Pinned')).toBe(false);
+    });
+  });
+
+  describe('prompt', () => {
+    it('asks for a value first, ignores an empty one, then runs with it', async () => {
+      const run = vi.fn();
+      const service = setup();
+      service.register([
+        { id: 'a', label: 'Go to user', prompt: 'User id…', run },
+        { id: 'b', label: 'Other', run: noop },
+      ]);
+      service.open('go');
+      await service.execute(service.commands()[0]);
+      expect(run).not.toHaveBeenCalled();
+      expect(service.prompt()?.id).toBe('a');
+      expect(service.query()).toBe('');
+      expect(labels(service)).toEqual([['Commands', ['Go to user']]]);
+      await service.execute(service.prompt()!);
+      expect(run).not.toHaveBeenCalled();
+      expect(service.isOpen()).toBe(true);
+      service.setQuery('  42 ');
+      await service.execute(service.prompt()!);
+      expect(run).toHaveBeenCalledWith({ query: '42', value: '42' });
+      expect(service.isOpen()).toBe(false);
+      expect(service.prompt()).toBeNull();
+    });
+
+    it('goes back from the step, also together with a sub-palette', async () => {
+      const service = setup();
+      service.register([
+        {
+          id: 'p',
+          label: 'Parent',
+          children: [{ id: 'c', label: 'Child', prompt: 'Value', run: noop }],
+        },
+      ]);
+      service.open();
+      await service.execute(service.commands()[0]);
+      await service.execute(service.path()[0].children[0]);
+      expect(service.prompt()?.id).toBe('c');
+      expect(service.back()).toBe(true);
+      expect(service.prompt()).toBeNull();
+      expect(service.path().map((c) => c.id)).toEqual(['p']);
+      await service.execute(service.path()[0].children[0]);
+      expect(service.back(2)).toBe(true);
+      expect(service.path()).toEqual([]);
+      expect(service.prompt()).toBeNull();
+      expect(service.back()).toBe(false);
+    });
+
+    it('passes no value to commands without prompt', async () => {
+      const run = vi.fn();
+      const service = setup();
+      service.register([{ id: 'a', label: 'A', run }]);
+      service.open('a');
+      await service.execute(service.commands()[0]);
+      expect(run).toHaveBeenCalledWith({ query: 'a' });
+    });
+  });
 });

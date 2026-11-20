@@ -116,4 +116,41 @@ describe('RecentStore', () => {
     const next = store.add({ id: 'new', label: 'New', route: '/n' }, []);
     expect(next.map((e) => e.id)).toEqual(['new']);
   });
+
+  describe('frequent ranking', () => {
+    const DAY = 24 * 3600 * 1000;
+    const cmd = (id: string) => ({ id, label: id.toUpperCase(), route: `/${id}` });
+
+    it('ranks by how often a command ran, not only by when', () => {
+      const store = new RecentStore('k', 5, memoryStorage(), 'frequent');
+      let list = store.add(cmd('a'), [], 1000);
+      list = store.add(cmd('a'), list, 2000);
+      list = store.add(cmd('b'), list, 3000);
+      expect(list.map((e) => e.id)).toEqual(['a', 'b']);
+      expect(list[0].count).toBe(2);
+    });
+
+    it('lets old executions fade (half-life 7 days)', () => {
+      const store = new RecentStore('k', 5, memoryStorage(), 'frequent');
+      let list = store.add(cmd('a'), [], 0);
+      list = store.add(cmd('a'), list, 1);
+      list = store.add(cmd('b'), list, 21 * DAY);
+      expect(list.map((e) => e.id)).toEqual(['b', 'a']);
+    });
+
+    it('drops the lowest ranked entry when full, not the oldest', () => {
+      const store = new RecentStore('k', 2, memoryStorage(), 'frequent');
+      let list = store.add(cmd('a'), [], 1000);
+      list = store.add(cmd('a'), list, 1001);
+      list = store.add(cmd('a'), list, 1002);
+      list = store.add(cmd('b'), list, 1003);
+      list = store.add(cmd('c'), list, 1004);
+      expect(list.map((e) => e.id)).toEqual(['a', 'c']);
+    });
+
+    it('does not store counters in the default mode', () => {
+      const store = new RecentStore('k', 5, memoryStorage());
+      expect(store.add(cmd('a'), [])[0]).toEqual({ id: 'a', label: 'A', route: '/a' });
+    });
+  });
 });

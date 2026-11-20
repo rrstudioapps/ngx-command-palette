@@ -24,6 +24,7 @@ export {
   provideCommandPalette,
   type CommandFilter,
   type CommandPaletteConfig,
+  type CommandPrefix,
   type CommandPaletteLabels,
   type CommandPaletteOptions,
   type CommandPaletteRecentOptions,
@@ -31,6 +32,7 @@ export {
 } from './lib/config';
 export {
   CommandPaletteService,
+  PINNED_SECTION_ID,
   RECENT_SECTION_ID,
   injectCommandProvider,
   injectCommands,

@@ -19,6 +19,10 @@ export const appConfig: ApplicationConfig = {
       shortcut: ['mod+k', '/'],
       recent: { max: 4, storageKey: 'rr-cp-demo:recent' },
       debounceMs: 150,
+      prefixes: [
+        { prefix: '>', kind: 'action' },
+        { prefix: '@', groups: ['Customers'] },
+      ],
     }),
   ],
 };

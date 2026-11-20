@@ -37,6 +37,14 @@ import { LINKS } from '../shared/data';
           <li>Type <code>dk</code>: fuzzy matches “Switch to <b>d</b>ar<b>k</b> theme”.</li>
           <li>Type <code>ada</code>: customers come from a fake API with a 450&nbsp;ms delay.</li>
           <li>Open <em>Projects</em>: page commands appear, and leave when you go away.</li>
+          <li>
+            Start with <code>&gt;</code> to list actions only, or <code>@</code> for customers.
+          </li>
+          <li>
+            Press <kbd>Alt</kbd> <kbd>T</kbd> with the palette closed: a command can bind its own
+            key.
+          </li>
+          <li>Pick <em>Open customer by id…</em>: it asks for a value, then runs.</li>
           <li>Run a command, then reopen: it shows up under <em>Recent</em>.</li>
           <li>
             Use <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd> <kbd>Enter</kbd>

@@ -73,6 +73,13 @@ export class CommandPaletteComponent {
     ? formatShortcut(this.shortcuts[0], this.apple)
     : '';
 
+  /** Keys shown on a row: `shortcut`, or the formatted `hotkey` when there is no `shortcut`. */
+  protected keysOf(command: Command): readonly string[] {
+    if (command.shortcut?.length) return command.shortcut;
+    const hotkey = typeof command.hotkey === 'string' ? command.hotkey : command.hotkey?.[0];
+    return hotkey ? [formatShortcut(parseShortcut(hotkey), this.apple)] : [];
+  }
+
   private readonly prefersDark = signal(false);
   protected readonly resolvedTheme = computed(() => {
     const theme = this.theme() ?? this.config.theme;
@@ -112,11 +119,21 @@ export class CommandPaletteComponent {
     const count = this.items().length;
     if (count === 0) return this.labels.empty;
     const path = this.service.path();
+    const prompt = this.service.prompt();
+    if (prompt) return this.labels.prompt.replace('{name}', prompt.label);
     const template = path.length ? this.labels.level : this.labels.results;
     return template
       .replace('{name}', path[path.length - 1]?.label ?? '')
       .replace('{count}', String(count));
   });
+  /** Sub-palettes opened plus, last, the command waiting for a value. Shown as the path above the search. */
+  protected readonly crumbs = computed<readonly Command[]>(() => {
+    const prompt = this.service.prompt();
+    return prompt ? [...this.service.path(), prompt] : this.service.path();
+  });
+  protected readonly placeholder = computed(
+    () => this.service.prompt()?.prompt ?? this.labels.placeholder,
+  );
 
   constructor() {
     const view = this.document.defaultView;
@@ -174,7 +191,7 @@ export class CommandPaletteComponent {
       event.key === 'Backspace' &&
       !event.isComposing &&
       this.service.query() === '' &&
-      this.service.path().length
+      this.crumbs().length
     ) {
       // Like deleting the "tag" in front of the search text: leave the sub-palette
       event.preventDefault();
@@ -222,6 +239,14 @@ export class CommandPaletteComponent {
 
   protected onDocumentKeydown(event: KeyboardEvent): void {
     if (event.repeat || event.isComposing) return;
+    // Command hotkeys need a modifier. Alt alone is ignored in a text field: on macOS it types
+    // special characters (Alt+T is "†"), so it must not be swallowed there. Ctrl and ⌘ never type.
+    const hotkeyAllowed =
+      event.ctrlKey || event.metaKey || (event.altKey && !isEditable(event.target));
+    if (hotkeyAllowed && this.service.runHotkey(event, this.apple)) {
+      event.preventDefault();
+      return;
+    }
     // Shortcuts without Ctrl/⌘/Alt (e.g. "/") do not fire while typing in a field
     const typing = isEditable(event.target);
     const hit = this.shortcuts.some(

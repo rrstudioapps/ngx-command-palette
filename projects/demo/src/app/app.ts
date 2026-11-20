@@ -2,7 +2,7 @@
 // © 2026 rrstudio — ngx-command-palette demo
 
 import { Component, DOCUMENT, computed, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import {
   type Command,
   CommandEmptyTemplate,
@@ -11,15 +11,11 @@ import {
   injectCommandProvider,
   injectCommands,
   isApplePlatform,
-  matchesShortcut,
-  parseShortcut,
 } from '@rrstudioapps/ngx-command-palette';
 
 import { searchCustomers, LINKS } from './shared/data';
 import { DemoIcons, IconRegistry } from './shared/icons';
 import { ThemeService } from './shared/theme';
-
-const THEME_SHORTCUT = parseShortcut('alt+t');
 
 @Component({
   selector: 'demo-root',
@@ -33,13 +29,13 @@ const THEME_SHORTCUT = parseShortcut('alt+t');
   ],
   templateUrl: './app.html',
   styleUrl: './app.css',
-  host: { '(document:keydown)': 'onKeydown($event)' },
 })
 export class App {
   protected readonly palette = inject(CommandPaletteService);
   protected readonly themeService = inject(ThemeService);
   private readonly icons = inject(IconRegistry);
   private readonly document = inject(DOCUMENT);
+  private readonly router = inject(Router);
   protected readonly apple = isApplePlatform();
   protected readonly links = LINKS;
 
@@ -89,7 +85,8 @@ export class App {
             group: 'Preferences',
             icon: icon.get('theme'),
             keywords: ['dark mode', 'light mode', 'appearance', 'night'],
-            shortcut: this.apple ? ['⌥', 'T'] : ['Alt', 'T'],
+            hotkey: 'alt+t',
+            pinned: true,
             run: () => this.themeService.toggle(),
           },
           {
@@ -118,6 +115,15 @@ export class App {
                 run: () => this.themeService.compact.update((c) => !c),
               },
             ],
+          },
+          {
+            id: 'customer-by-id',
+            label: 'Open customer by id…',
+            description: 'Asks for a value, then runs',
+            group: 'Customers',
+            icon: icon.get('user'),
+            prompt: 'Customer id, e.g. 1',
+            run: ({ value }) => this.router.navigate(['/customers', value]),
           },
           {
             id: 'copy-install',
@@ -180,13 +186,6 @@ export class App {
         }));
       },
     });
-  }
-
-  protected onKeydown(event: KeyboardEvent): void {
-    if (matchesShortcut(event, THEME_SHORTCUT, this.apple)) {
-      event.preventDefault();
-      this.themeService.toggle();
-    }
   }
 
   private go(url: string): void {

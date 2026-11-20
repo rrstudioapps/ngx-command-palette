@@ -8,7 +8,7 @@
       [attr.aria-label]="labels.dialog"
       (keydown)="onKeydown($event)"
     >
-      @if (service.path(); as path) {
+      @if (crumbs(); as path) {
         @if (path.length) {
           <nav class="rr-cp-path">
             <button
@@ -68,8 +68,8 @@
           aria-haspopup="listbox"
           [attr.aria-controls]="uid + '-listbox'"
           [attr.aria-activedescendant]="activeDescendant()"
-          [attr.aria-label]="labels.placeholder"
-          [placeholder]="labels.placeholder"
+          [attr.aria-label]="placeholder()"
+          [placeholder]="placeholder()"
           [value]="service.query()"
           (input)="onInput($event)"
           autocomplete="off"
@@ -140,9 +140,9 @@
                     <span class="rr-cp-sr-only">, {{ labels.submenu }}</span>
                     <span class="rr-cp-chevron" aria-hidden="true">›</span>
                   }
-                  @if (row.item.command.shortcut?.length) {
+                  @if (keysOf(row.item.command).length) {
                     <span class="rr-cp-shortcut" aria-hidden="true">
-                      @for (key of row.item.command.shortcut; track $index) {
+                      @for (key of keysOf(row.item.command); track $index) {
                         <kbd>{{ key }}</kbd>
                       }
                     </span>

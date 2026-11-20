@@ -10,6 +10,10 @@ export interface RecentEntry {
   readonly group?: string;
   readonly description?: string;
   readonly route?: string | readonly unknown[];
+  /** Times executed (used by the `frequent` ranking). */
+  readonly count?: number;
+  /** When it was last executed, in ms since the epoch. */
+  readonly at?: number;
 }
 
 /**
@@ -24,6 +28,7 @@ export class RecentStore {
       Storage,
       'getItem' | 'setItem' | 'removeItem'
     > | null = defaultStorage(),
+    private readonly rank: 'recent' | 'frequent' = 'recent',
   ) {}
 
   load(): RecentEntry[] {
@@ -33,25 +38,36 @@ export class RecentStore {
       if (!raw) return [];
       const parsed: unknown = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter(isEntry).slice(0, this.max);
+      return this.order(parsed.filter(isEntry), Date.now()).slice(0, this.max);
     } catch {
       return [];
     }
   }
 
-  /** Moves `command` to the top and returns the new list. */
-  add(command: Command, current: readonly RecentEntry[] = this.load()): RecentEntry[] {
+  /** Records an execution of `command` and returns the new list (most relevant first). */
+  add(
+    command: Command,
+    current: readonly RecentEntry[] = this.load(),
+    now = Date.now(),
+  ): RecentEntry[] {
     if (this.max <= 0) return [];
+    const previous = current.find((e) => e.id === command.id);
     const entry: RecentEntry = {
       id: command.id,
       label: command.label,
+      ...(this.rank === 'frequent'
+        ? { count: (previous?.count ?? (previous ? 1 : 0)) + 1, at: now }
+        : {}),
       ...(command.group ? { group: command.group } : {}),
       ...(command.description ? { description: command.description } : {}),
       ...(command.route !== undefined && isSerializable(command.route)
         ? { route: command.route }
         : {}),
     };
-    const next = [entry, ...current.filter((e) => e.id !== command.id)].slice(0, this.max);
+    const next = this.order([entry, ...current.filter((e) => e.id !== command.id)], now).slice(
+      0,
+      this.max,
+    );
     this.save(next);
     return next;
   }
@@ -64,6 +80,15 @@ export class RecentStore {
     }
   }
 
+  /** `recent`: the given order (newest first). `frequent`: by score, newest first on a tie. */
+  private order(entries: RecentEntry[], now: number): RecentEntry[] {
+    if (this.rank !== 'frequent') return entries;
+    return entries
+      .map((entry, index) => ({ entry, index, score: frecency(entry, now) }))
+      .sort((a, b) => b.score - a.score || a.index - b.index)
+      .map((x) => x.entry);
+  }
+
   private save(entries: readonly RecentEntry[]): void {
     try {
       this.storage?.setItem(this.storageKey, JSON.stringify(entries));
@@ -71,6 +96,14 @@ export class RecentStore {
       /* quota exceeded or storage blocked: recents stay in memory only */
     }
   }
+}
+
+const HALF_LIFE_MS = 7 * 24 * 3600 * 1000;
+
+/** Executions weighted by recency: the weight halves every 7 days. Entries without data count once, now. */
+export function frecency(entry: RecentEntry, now: number): number {
+  const age = entry.at === undefined ? 0 : Math.max(0, now - entry.at);
+  return (entry.count ?? 1) * Math.pow(0.5, age / HALF_LIFE_MS);
 }
 
 function defaultStorage(): Storage | null {

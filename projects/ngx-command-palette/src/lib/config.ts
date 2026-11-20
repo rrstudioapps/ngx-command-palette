@@ -16,6 +16,9 @@ export interface CommandPaletteLabels {
   readonly empty: string;
   readonly loading: string;
   readonly recent: string;
+  readonly pinned: string;
+  /** Announced when a command asks for a value. `{name}` is the command label. */
+  readonly prompt: string;
   readonly defaultGroup: string;
   /** Screen reader announcement, `{count}` is replaced by the number of results. */
   readonly results: string;
@@ -34,9 +37,28 @@ export interface CommandPaletteLabels {
  */
 export type CommandFilter = (query: string, command: Command) => FuzzyMatch | null;
 
+/**
+ * A mode entered by starting the search with `prefix` (e.g. `>` for actions). The prefix is removed from
+ * the search text and only the commands that satisfy every given condition are listed.
+ */
+export interface CommandPrefix {
+  /** Text the search must start with, e.g. `>` or `/`. */
+  readonly prefix: string;
+  /** Only commands (and async providers) of these sections. */
+  readonly groups?: readonly string[];
+  /** Only route commands or only commands that run a function. */
+  readonly kind?: 'route' | 'action';
+}
+
 export interface CommandPaletteRecentOptions {
   /** Max number of recents shown. Default: 5. */
   readonly max?: number;
+  /**
+   * `recent` (default) lists the last executed commands. `frequent` ranks them by how often and how
+   * recently they were executed (the count halves every 7 days), and drops the lowest ranked one
+   * when the list is full.
+   */
+  readonly rank?: 'recent' | 'frequent';
   /** localStorage key. Default: `rr-cp:recent`. */
   readonly storageKey?: string;
 }
@@ -60,6 +82,8 @@ export interface CommandPaletteConfig {
   readonly maxEmptyResults: number;
   /** Matching and ranking of local commands for a non-empty query. Default: the built-in fuzzy search. */
   readonly filter: CommandFilter;
+  /** Search modes triggered by a leading character, e.g. `[{ prefix: '>', kind: 'action' }]`. Default: none. */
+  readonly prefixes: readonly CommandPrefix[];
   readonly labels: CommandPaletteLabels;
 }
 
@@ -74,6 +98,8 @@ export const DEFAULT_COMMAND_PALETTE_LABELS: CommandPaletteLabels = {
   empty: 'No results found.',
   loading: 'Loading…',
   recent: 'Recent',
+  pinned: 'Pinned',
+  prompt: '{name}: type a value and press Enter',
   defaultGroup: 'Commands',
   results: '{count} results',
   closeHint: 'Esc',
@@ -90,6 +116,7 @@ export const DEFAULT_COMMAND_PALETTE_CONFIG: CommandPaletteConfig = {
   maxResults: 50,
   maxEmptyResults: 100,
   filter: matchCommand,
+  prefixes: [],
   labels: DEFAULT_COMMAND_PALETTE_LABELS,
 };
 

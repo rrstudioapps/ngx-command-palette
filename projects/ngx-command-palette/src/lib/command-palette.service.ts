@@ -20,10 +20,16 @@ import type {
   CommandResult,
   CommandSection,
   CommandSubscribable,
+  ActionCommand,
   ParentCommand,
 } from './command.model';
-import { COMMAND_PALETTE_CONFIG, type CommandPaletteRecentOptions } from './config';
+import {
+  COMMAND_PALETTE_CONFIG,
+  type CommandPaletteRecentOptions,
+  type CommandPrefix,
+} from './config';
 import { fuzzyMatch, highlightSegments } from './fuzzy';
+import { matchesShortcut, parseShortcut } from './shortcut';
 import { RecentStore, type RecentEntry } from './recent-store';
 
 interface Registration {
@@ -44,6 +50,7 @@ interface PendingRequest {
 }
 
 export const RECENT_SECTION_ID = 'recent';
+export const PINNED_SECTION_ID = 'pinned';
 
 /**
  * State of the command palette. Register commands from any component: they are removed
@@ -59,6 +66,8 @@ export class CommandPaletteService {
     ? new RecentStore(
         (this.config.recent as CommandPaletteRecentOptions).storageKey ?? 'rr-cp:recent',
         (this.config.recent as CommandPaletteRecentOptions).max ?? 5,
+        undefined,
+        (this.config.recent as CommandPaletteRecentOptions).rank,
       )
     : null;
 
@@ -70,10 +79,13 @@ export class CommandPaletteService {
   private readonly recents = signal<readonly RecentEntry[]>(this.recentStore?.load() ?? []);
   private readonly pending = new Map<string, PendingRequest>();
   private readonly pathIds = signal<readonly string[]>([]);
+  private readonly promptCommand = signal<ActionCommand | null>(null);
   private returnFocus: HTMLElement | null = null;
 
   /** Whether the palette is open. */
   readonly isOpen = this._isOpen.asReadonly();
+  /** The command asking for a value (see `prompt`), while its second step is shown. */
+  readonly prompt = this.promptCommand.asReadonly();
   /** Current search text. */
   readonly query = this._query.asReadonly();
 
@@ -114,10 +126,36 @@ export class CommandPaletteService {
   /** True while at least one async provider is waiting for results. */
   readonly loading = computed(() => [...this.providerState().values()].some((s) => s.loading));
 
+  /** The search mode (see the `prefixes` option) the current search starts with, if any. */
+  readonly activePrefix: Signal<CommandPrefix | null> = computed(
+    () => this.parseQuery(this._query()).prefix,
+  );
+
   /** Sections shown in the list, already filtered and sorted. */
   readonly sections: Signal<readonly CommandSection[]> = computed(() =>
-    this.buildSections(this._query().trim()),
+    this.buildSections(this._query()),
   );
+
+  /** Leaf commands with a `hotkey`, not hidden. */
+  private readonly hotkeyCommands = computed(() =>
+    descendants(this.commands()).filter((c) => c.hotkey && !isParent(c)),
+  );
+
+  /**
+   * Runs the command bound to the key event, if any (called by the component for every keydown).
+   * Returns true when a command matched, so the caller can `preventDefault()`.
+   */
+  runHotkey(event: KeyboardEvent, apple: boolean): boolean {
+    if (this._isOpen()) return false;
+    for (const command of this.hotkeyCommands()) {
+      const keys = typeof command.hotkey === 'string' ? [command.hotkey] : (command.hotkey ?? []);
+      if (!keys.some((k) => matchesShortcut(event, parseShortcut(k), apple))) continue;
+      if (command.disabled) return false;
+      void this.execute(command);
+      return true;
+    }
+    return false;
+  }
 
   /** Opens the palette, optionally with an initial query. */
   open(query = ''): void {
@@ -133,6 +171,7 @@ export class CommandPaletteService {
     }
     this._isOpen.set(true);
     this.pathIds.set([]);
+    this.promptCommand.set(null);
     this.setQuery(query);
   }
 
@@ -143,6 +182,7 @@ export class CommandPaletteService {
     this.cancelAll();
     this._query.set('');
     this.pathIds.set([]);
+    this.promptCommand.set(null);
     this.providerState.set(new Map());
     const target = this.returnFocus;
     this.returnFocus = null;
@@ -161,13 +201,20 @@ export class CommandPaletteService {
   }
 
   /**
-   * Goes back `levels` levels of a sub-palette (one by default) and clears the search.
+   * Goes back `levels` levels of a sub-palette or value step (one by default) and clears the search.
    * Returns `false`, doing nothing, when the top level is already shown.
    */
   back(levels = 1): boolean {
     const path = this.path();
-    if (!path.length || levels < 1) return false;
-    this.pathIds.set(path.slice(0, Math.max(0, path.length - levels)).map((c) => c.id));
+    let remaining = levels;
+    if (levels < 1 || !(path.length || this.promptCommand())) return false;
+    if (this.promptCommand()) {
+      this.promptCommand.set(null);
+      remaining--;
+    }
+    if (remaining > 0) {
+      this.pathIds.set(path.slice(0, Math.max(0, path.length - remaining)).map((c) => c.id));
+    }
     this.setQuery('');
     return true;
   }
@@ -191,7 +238,8 @@ export class CommandPaletteService {
   /** Registers an async provider. Same lifetime rules as {@link register}. */
   registerProvider(provider: CommandProvider, destroyRef?: DestroyRef): () => void {
     this.providers.update((list) => [...list.filter((p) => p.id !== provider.id), provider]);
-    if (this._isOpen() && !this.pathIds().length) this.scheduleProvider(provider, this._query());
+    if (this._isOpen() && !this.pathIds().length && !this.promptCommand())
+      this.scheduleProvider(provider, this._query());
     const remove = () => {
       if (!this.providers().includes(provider)) return;
       this.cancel(provider.id);
@@ -219,7 +267,20 @@ export class CommandPaletteService {
       this.setQuery('');
       return;
     }
-    const query = this._query();
+    let query = this.parseQuery(this._query()).text;
+    let value: string | undefined;
+    if (!isParent(command) && command.prompt !== undefined) {
+      if (this.promptCommand()?.id !== command.id) {
+        // First step: ask for the value
+        this.cancelAll();
+        this.providerState.set(new Map());
+        this.promptCommand.set(command as ActionCommand);
+        this.setQuery('');
+        return;
+      }
+      query = value = this._query().trim();
+      if (!value) return;
+    }
     if (this.recentStore) this.recents.set(this.recentStore.add(command, this.recents()));
     this.close();
     if (command.route !== undefined) {
@@ -229,7 +290,7 @@ export class CommandPaletteService {
         ? this.router.navigateByUrl(route, navigationExtras)
         : this.router.navigate(route as unknown[], navigationExtras));
     } else {
-      await command.run({ query });
+      await command.run(value === undefined ? { query } : { query, value });
     }
   }
 
@@ -250,9 +311,26 @@ export class CommandPaletteService {
     };
   }
 
-  private buildSections(query: string): CommandSection[] {
+  /** Splits the raw search into the mode it starts with (if any) and the text to search. */
+  private parseQuery(raw: string): { prefix: CommandPrefix | null; text: string } {
+    const trimmed = raw.trim();
+    const prefix =
+      this.config.prefixes.find((p) => p.prefix && trimmed.startsWith(p.prefix)) ?? null;
+    return { prefix, text: prefix ? trimmed.slice(prefix.prefix.length).trim() : trimmed };
+  }
+
+  private buildSections(rawQuery: string): CommandSection[] {
     const defaultGroup = this.config.labels.defaultGroup;
-    const commands = this.levelCommands();
+    const prompt = this.promptCommand();
+    if (prompt) {
+      const items = [toResult(prompt, `x:${prompt.id}`, 0, [])];
+      return [{ id: 'prompt', label: prompt.group ?? defaultGroup, items }];
+    }
+    const { prefix, text: query } = this.parseQuery(rawQuery);
+    const levelCommands = this.levelCommands();
+    const commands = prefix
+      ? levelCommands.filter((c) => inPrefix(c, prefix, defaultGroup))
+      : levelCommands;
     const groups = new Map<string, CommandResult[]>();
     const push = (group: string, result: CommandResult) => {
       const list = groups.get(group);
@@ -263,7 +341,18 @@ export class CommandPaletteService {
 
     const topLevel = !this.pathIds().length;
     if (!query) {
-      const recent = topLevel ? this.recentResults(commands) : [];
+      const pinned = prefix
+        ? []
+        : commands
+            .filter((c) => !isHidden(c) && isPinned(c))
+            .map((c) => toResult(c, `pin:${c.id}`, 0, []));
+      if (pinned.length)
+        sections.push({ id: PINNED_SECTION_ID, label: this.config.labels.pinned, items: pinned });
+      const pinnedIds = new Set(pinned.map((r) => r.command.id));
+      const recent =
+        topLevel && !prefix
+          ? this.recentResults(commands).filter((r) => !pinnedIds.has(r.command.id))
+          : [];
       if (recent.length)
         sections.push({ id: RECENT_SECTION_ID, label: this.config.labels.recent, items: recent });
       let listed = 0;
@@ -293,6 +382,8 @@ export class CommandPaletteService {
     // Async results: server order, highlighted when the label matches
     const states = this.providerState();
     for (const provider of topLevel ? this.providers() : []) {
+      if (prefix && (prefix.kind || (prefix.groups && !prefix.groups.includes(provider.group))))
+        continue;
       const state = states.get(provider.id);
       if (!state?.items.length) continue;
       const items = state.items
@@ -336,14 +427,18 @@ export class CommandPaletteService {
   }
 
   private scheduleProviders(): void {
-    if (this.pathIds().length) return;
+    if (this.pathIds().length || this.promptCommand()) return;
     const query = this._query();
     for (const provider of this.providers()) this.scheduleProvider(provider, query);
   }
 
   private scheduleProvider(provider: CommandProvider, rawQuery: string): void {
     this.cancel(provider.id);
-    const query = rawQuery.trim();
+    const { prefix, text: query } = this.parseQuery(rawQuery);
+    if (prefix && (prefix.kind || (prefix.groups && !prefix.groups.includes(provider.group)))) {
+      this.setProviderState(provider.id, null);
+      return;
+    }
     if (query.length < (provider.minQueryLength ?? 1)) {
       this.setProviderState(provider.id, null);
       return;
@@ -416,6 +511,18 @@ function toResult(
   indices: readonly number[],
 ): CommandResult {
   return { command, key, score, indices, segments: highlightSegments(command.label, indices) };
+}
+
+function inPrefix(command: Command, prefix: CommandPrefix, defaultGroup: string): boolean {
+  if (prefix.groups && !prefix.groups.includes(command.group ?? defaultGroup)) return false;
+  if (prefix.kind === 'route') return command.route !== undefined;
+  if (prefix.kind === 'action') return typeof command.run === 'function';
+  return true;
+}
+
+function isPinned(command: Command): boolean {
+  const { pinned } = command;
+  return typeof pinned === 'function' ? pinned() : !!pinned;
 }
 
 function isParent(command: Command): command is ParentCommand {
