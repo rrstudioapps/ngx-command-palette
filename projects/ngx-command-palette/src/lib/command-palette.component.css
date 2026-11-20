@@ -17,7 +17,7 @@
 
   --rr-cp-bg: #ffffff;
   --rr-cp-fg: #18181b;
-  --rr-cp-muted: #71717a;
+  --rr-cp-muted: #686872;
   --rr-cp-border: #e4e4e7;
   --rr-cp-accent: #4f46e5;
   --rr-cp-item-active-bg: #f4f4f5;
@@ -236,6 +236,8 @@
 }
 
 .rr-cp-match {
+  /* Reset what global `mark` styles add (e.g. Bootstrap's padding) */
+  padding: 0;
   background: var(--rr-cp-highlight-bg);
   color: var(--rr-cp-highlight);
   font-weight: 600;
