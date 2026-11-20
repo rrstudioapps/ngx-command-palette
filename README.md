@@ -27,8 +27,8 @@ standalone components, signals, zoneless-ready and **no dependencies besides Ang
 - Custom **templates** for items and the empty state
 - No browser globals at import time (SSR friendly), works with or without zone.js
 
-| Light | Dark |
-| --- | --- |
+| Light                                                                                                             | Dark                                                                                                            |
+| ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | ![Light theme](https://raw.githubusercontent.com/rrstudioapps/ngx-command-palette/main/docs/screenshot-light.png) | ![Dark theme](https://raw.githubusercontent.com/rrstudioapps/ngx-command-palette/main/docs/screenshot-dark.png) |
 
 ## Installation
@@ -48,10 +48,7 @@ Requires Angular 21 or 22 (`@angular/core`, `@angular/common`, `@angular/router`
 import { provideCommandPalette } from '@rrstudioapps/ngx-command-palette';
 
 export const appConfig: ApplicationConfig = {
-  providers: [
-    provideRouter(routes),
-    provideCommandPalette({ shortcut: 'mod+k' }),
-  ],
+  providers: [provideRouter(routes), provideCommandPalette({ shortcut: 'mod+k' })],
 };
 ```
 
@@ -76,7 +73,13 @@ export class App {
   constructor() {
     injectCommands([
       { id: 'home', label: 'Home', group: 'Navigation', route: '/' },
-      { id: 'settings', label: 'Settings', group: 'Navigation', route: '/settings', keywords: ['preferences'] },
+      {
+        id: 'settings',
+        label: 'Settings',
+        group: 'Navigation',
+        route: '/settings',
+        keywords: ['preferences'],
+      },
       { id: 'logout', label: 'Log out', icon: '🚪', run: () => this.auth.logout() },
     ]);
   }
@@ -89,7 +92,7 @@ export class App {
 Pass a signal to keep them in sync with your state:
 
 ```ts
-@Component({ /* … */ })
+@Component({/* … */})
 export class ProjectsPage {
   projects = signal<Project[]>([]);
 
@@ -135,16 +138,32 @@ injectCommandProvider({
 
 ### `provideCommandPalette(options?)`
 
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `shortcut` | `string \| string[]` | `'mod+k'` | Toggle shortcut(s). `mod` is ⌘ on macOS/iOS and Ctrl elsewhere. Examples: `'ctrl+shift+p'`, `'/'`. Shortcuts without Ctrl/⌘/Alt are ignored while typing in a field. |
-| `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | `auto` follows `prefers-color-scheme`. |
-| `recent` | `{ max?, storageKey? } \| false` | `{ max: 5, storageKey: 'rr-cp:recent' }` | "Recent" section shown when the query is empty. |
-| `debounceMs` | `number` | `200` | Debounce for async providers. |
-| `maxResults` | `number` | `50` | Max local results for a non-empty query. |
-| `maxEmptyResults` | `number` | `100` | Max commands listed when the search is empty (recents not counted). The rest is still found by typing. See [Many commands](#many-commands). |
-| `filter` | `(query, command) => { score, indices } \| null` | built-in fuzzy search | Your own matching and ranking of local commands. See [Custom search](#custom-search). |
-| `labels` | `Partial<CommandPaletteLabels>` | English | All texts, for translations: `placeholder`, `dialog`, `listbox`, `empty`, `loading`, `recent`, `defaultGroup`, `results` (`'{count} results'`), `closeHint`, `back`, `level` (`'{name}: {count} results'`), `submenu`. |
+| Option            | Type                                             | Default                                  | Description                                                                                                                                                                                                                                                                           |
+| ----------------- | ------------------------------------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shortcut`        | `string \| string[]`                             | `'mod+k'`                                | Toggle shortcut(s). `mod` is ⌘ on macOS/iOS and Ctrl elsewhere. Examples: `'ctrl+shift+p'`, `'/'`. Shortcuts without Ctrl/⌘/Alt are ignored while typing in a field.                                                                                                                  |
+| `theme`           | `'light' \| 'dark' \| 'auto'`                    | `'auto'`                                 | `auto` follows `prefers-color-scheme`.                                                                                                                                                                                                                                                |
+| `recent`          | `{ max?, storageKey?, rank? } \| false`          | `{ max: 5, storageKey: 'rr-cp:recent' }` | "Recent" section shown when the query is empty. `rank: 'frequent'` orders it by how often and how recently commands ran (count halves every 7 days).                                                                                                                                  |
+| `debounceMs`      | `number`                                         | `200`                                    | Debounce for async providers.                                                                                                                                                                                                                                                         |
+| `maxResults`      | `number`                                         | `50`                                     | Max local results for a non-empty query.                                                                                                                                                                                                                                              |
+| `maxEmptyResults` | `number`                                         | `100`                                    | Max commands listed when the search is empty (recents not counted). The rest is still found by typing. See [Many commands](#many-commands).                                                                                                                                           |
+| `filter`          | `(query, command) => { score, indices } \| null` | built-in fuzzy search                    | Your own matching and ranking of local commands. See [Custom search](#custom-search).                                                                                                                                                                                                 |
+| `prefixes`        | `{ prefix, groups?, kind? }[]`                   | `[]`                                     | Search modes. See [Prefix modes](#prefix-modes).                                                                                                                                                                                                                                      |
+| `labels`          | `Partial<CommandPaletteLabels>`                  | English                                  | All texts, for translations: `placeholder`, `dialog`, `listbox`, `empty`, `loading`, `recent`, `pinned`, `defaultGroup`, `results` (`'{count} results'`), `closeHint`, `back`, `level` (`'{name}: {count} results'`), `submenu`, `prompt` (`'{name}: type a value and press Enter'`). |
+
+### Prefix modes
+
+Start the search with a character to narrow the list, like `>` in VS Code. The prefix is removed from the
+search text (and from `ctx.query`); the recents are not shown and async providers only run when the mode allows them.
+
+```ts
+provideCommandPalette({
+  prefixes: [
+    { prefix: '>', kind: 'action' }, // only commands that run a function
+    { prefix: '/', kind: 'route' }, // only routes
+    { prefix: '#', groups: ['Customers'] }, // only these sections (and providers)
+  ],
+});
+```
 
 ### Many commands
 
@@ -207,55 +226,58 @@ injectCommands([
 
 ### `Command`
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | `string` | Unique and stable (used for recents). |
-| `label` | `string` | Shown and searched. |
-| `group` | `string?` | Section. Default: `labels.defaultGroup`. |
-| `description` | `string?` | Second line, searched with a lower weight. |
-| `icon` | `string \| TemplateRef?` | Emoji/text/icon-font ligature, or a template (e.g. an SVG). |
-| `shortcut` | `string[]?` | Keys shown on the right, e.g. `['⌘', 'S']`. Display only. |
-| `keywords` | `string[]?` | Extra search terms, not shown. |
-| `disabled` | `boolean?` | Shown but not selectable. |
-| `children` | `Command[]?` | Makes it a parent: selecting it opens a sub-palette with these commands instead of running something. See [Sub-palettes](#sub-palettes). |
-| `hidden` | `boolean \| (() => boolean)?` | Not listed and not searched. A function or a signal hides it depending on your app state, e.g. `hidden: () => !user()`. |
-| `route` + `navigationExtras` | `string \| any[]`, `NavigationExtras?` | Navigate with the Angular router… |
-| `run` | `(ctx: { query }) => void \| Promise` | …or run a function. |
+| Field                        | Type                                          | Description                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                         | `string`                                      | Unique and stable (used for recents).                                                                                                                                                                                                                                                                                                                                    |
+| `label`                      | `string`                                      | Shown and searched.                                                                                                                                                                                                                                                                                                                                                      |
+| `group`                      | `string?`                                     | Section. Default: `labels.defaultGroup`.                                                                                                                                                                                                                                                                                                                                 |
+| `description`                | `string?`                                     | Second line, searched with a lower weight.                                                                                                                                                                                                                                                                                                                               |
+| `icon`                       | `string \| TemplateRef?`                      | Emoji/text/icon-font ligature, or a template (e.g. an SVG).                                                                                                                                                                                                                                                                                                              |
+| `shortcut`                   | `string[]?`                                   | Keys shown on the right, e.g. `['⌘', 'S']`. Display only: use `hotkey` to bind a key.                                                                                                                                                                                                                                                                                    |
+| `hotkey`                     | `string \| string[]?`                         | Key combination(s) that run the command even when the palette is closed, e.g. `'mod+s'`. It needs Ctrl, ⌘ or Alt; Alt-only combinations do not fire while typing in a text field (on macOS Alt types special characters), Ctrl and ⌘ ones do. Ignored for parents, disabled/hidden commands and while the palette is open. Shown on the row when there is no `shortcut`. |
+| `keywords`                   | `string[]?`                                   | Extra search terms, not shown.                                                                                                                                                                                                                                                                                                                                           |
+| `disabled`                   | `boolean?`                                    | Shown but not selectable.                                                                                                                                                                                                                                                                                                                                                |
+| `children`                   | `Command[]?`                                  | Makes it a parent: selecting it opens a sub-palette with these commands instead of running something. See [Sub-palettes](#sub-palettes).                                                                                                                                                                                                                                 |
+| `hidden`                     | `boolean \| (() => boolean)?`                 | Not listed and not searched. A function or a signal hides it depending on your app state, e.g. `hidden: () => !user()`.                                                                                                                                                                                                                                                  |
+| `pinned`                     | `boolean \| (() => boolean)?`                 | Also listed in a "Pinned" section at the top while the search is empty (and not repeated in Recent). A function or a signal pins it depending on your app state.                                                                                                                                                                                                         |
+| `route` + `navigationExtras` | `string \| any[]`, `NavigationExtras?`        | Navigate with the Angular router…                                                                                                                                                                                                                                                                                                                                        |
+| `run`                        | `(ctx: { query, value? }) => void \| Promise` | …or run a function.                                                                                                                                                                                                                                                                                                                                                      |
+| `prompt`                     | `string?`                                     | With `run`: asks for a value first. Selecting the command opens a second step whose field has this placeholder; Enter runs it with the text in `ctx.value` (nothing happens while empty), Backspace or the back button leaves the step. Example: `{ id: 'user', label: 'Go to user', prompt: 'User id…', run: ({ value }) => router.navigate(['/users', value]) }`.      |
 
 ### `CommandPaletteService`
 
-| Member | Description |
-| --- | --- |
-| `isOpen`, `query`, `loading` | Read-only signals. |
-| `commands`, `sections` | Registered commands and the filtered, grouped results of the current level (signals). |
-| `path` | The sub-palettes currently open, outermost first (signal). |
-| `back(levels?)` | Goes back one or more levels of a sub-palette; returns `false` at the top level. |
-| `open(query?)`, `close()`, `toggle()` | Open/close programmatically (e.g. from a "Search…" button). |
-| `setQuery(query)` | Change the search text. |
+| Member                                      | Description                                                                            |
+| ------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `isOpen`, `query`, `loading`                | Read-only signals.                                                                     |
+| `commands`, `sections`                      | Registered commands and the filtered, grouped results of the current level (signals).  |
+| `path`                                      | The sub-palettes currently open, outermost first (signal).                             |
+| `back(levels?)`                             | Goes back one or more levels of a sub-palette; returns `false` at the top level.       |
+| `open(query?)`, `close()`, `toggle()`       | Open/close programmatically (e.g. from a "Search…" button).                            |
+| `setQuery(query)`                           | Change the search text.                                                                |
 | `register(commands \| signal, destroyRef?)` | Returns an unregister function. Inside an injection context it unregisters on destroy. |
-| `registerProvider(provider, destroyRef?)` | Same, for async providers. |
-| `execute(command)` | Run a command as if selected. |
-| `clearRecent()` | Forget the recents. |
+| `registerProvider(provider, destroyRef?)`   | Same, for async providers.                                                             |
+| `execute(command)`                          | Run a command as if selected.                                                          |
+| `clearRecent()`                             | Forget the recents.                                                                    |
 
 `injectCommands(commands)` and `injectCommandProvider(provider)` are shortcuts for
 `register`/`registerProvider` bound to the current component.
 
 ### `CommandProvider`
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `id`, `group` | `string` | Provider id and section title. |
+| Field                   | Type                                          | Description                                                       |
+| ----------------------- | --------------------------------------------- | ----------------------------------------------------------------- |
+| `id`, `group`           | `string`                                      | Provider id and section title.                                    |
 | `search(query, signal)` | `Promise<Command[]> \| Observable<Command[]>` | `signal` is aborted when the query changes or the palette closes. |
-| `minQueryLength` | `number?` | Default `1`. |
-| `debounceMs` | `number?` | Overrides the global debounce. |
+| `minQueryLength`        | `number?`                                     | Default `1`.                                                      |
+| `debounceMs`            | `number?`                                     | Overrides the global debounce.                                    |
 
 Async results keep the order returned by your API. Route commands from a provider are kept
 in "Recent" even when they are no longer returned by the search.
 
 ### `<rr-command-palette>`
 
-| Input | Description |
-| --- | --- |
+| Input   | Description                                                                            |
+| ------- | -------------------------------------------------------------------------------------- |
 | `theme` | Overrides the configured theme, e.g. `[theme]="appTheme()"` to follow your own toggle. |
 
 The component also exposes `shortcutLabel` (`'⌘K'` or `'Ctrl+K'`) for your search button:
@@ -268,9 +290,8 @@ The component also exposes `shortcutLabel` (`'⌘K'` or `'Ctrl+K'`) for your sea
   <ng-template rrCommandItem let-command let-segments="segments" let-active="active">
     <my-icon [name]="command.id" />
     <span>
-      @for (s of segments; track $index) {
-        @if (s.match) { <b>{{ s.text }}</b> } @else { {{ s.text }} }
-      }
+      @for (s of segments; track $index) { @if (s.match) { <b>{{ s.text }}</b> } @else { {{ s.text
+      }} } }
     </span>
     @if (active) { <span class="hint">↵</span> }
   </ng-template>
@@ -290,6 +311,96 @@ The item context also has `result` (score and indices) and `query`.
 splits a string for highlighting. `parseShortcut`, `matchesShortcut` and `formatShortcut`
 handle shortcut strings. All of them are exported if you want the same behaviour elsewhere.
 
+## Recipes
+
+**Translations (i18n).** Pass every text through `labels` (`t` stands for your translation function; the library does not need `@angular/localize`). Translate your own command labels the same way when you build them:
+
+```ts
+provideCommandPalette({
+  labels: {
+    placeholder: t('palette.placeholder'),
+    empty: t('palette.empty'),
+    recent: t('palette.recent'),
+  },
+});
+```
+
+**Commands that depend on the current page.** Register from the component that owns the page: they are removed when it is destroyed.
+
+```ts
+@Component({/* … */})
+export class InvoicePage {
+  protected readonly invoice = input.required<Invoice>();
+  constructor() {
+    injectCommands(
+      computed<Command[]>(() => [
+        { id: 'invoice.send', label: `Send ${this.invoice().number}`, run: () => this.send() },
+      ]),
+    );
+  }
+}
+```
+
+**A button that opens the palette.** Inject `CommandPaletteService` as `palette` and show the shortcut label of the component:
+
+```html
+<button (click)="palette.open()">Search <kbd>{{ cp.shortcutLabel }}</kbd></button>
+<rr-command-palette #cp />
+```
+
+**Restricting commands by permission.** Use `hidden` with a signal so the command disappears from the list, the search and the recents:
+
+```ts
+{ id: 'admin.users', label: 'Manage users', route: '/admin/users', hidden: () => !auth.isAdmin() }
+```
+
+**Matching your UI kit.** The palette is self-contained and styled with CSS variables (see [Theming](#theming)), so you map them to your kit's tokens instead of wrapping it in another dialog. These tokens follow the kit's light/dark switch, so one block covers both themes. Token names checked against Angular Material 22.2, PrimeNG 22.1 (Aura preset) and Bootstrap 5.3.8.
+
+```css
+/* Angular Material (M3 system tokens) */
+.rr-cp {
+  --rr-cp-bg: var(--mat-sys-surface-container-high);
+  --rr-cp-fg: var(--mat-sys-on-surface);
+  --rr-cp-muted: var(--mat-sys-on-surface-variant);
+  --rr-cp-border: var(--mat-sys-outline-variant);
+  --rr-cp-accent: var(--mat-sys-primary);
+  --rr-cp-highlight: var(--mat-sys-primary);
+  --rr-cp-item-active-bg: var(--mat-sys-secondary-container);
+  --rr-cp-radius: var(--mat-sys-corner-extra-large);
+  --rr-cp-backdrop: color-mix(in srgb, var(--mat-sys-scrim) 32%, transparent);
+}
+
+/* PrimeNG (design tokens) */
+.rr-cp {
+  --rr-cp-bg: var(--p-content-background);
+  --rr-cp-fg: var(--p-text-color);
+  --rr-cp-muted: var(--p-text-muted-color);
+  --rr-cp-border: var(--p-content-border-color);
+  --rr-cp-accent: var(--p-primary-color);
+  --rr-cp-highlight: var(--p-primary-color);
+  --rr-cp-highlight-bg: var(--p-highlight-background);
+  --rr-cp-item-active-bg: var(--p-content-hover-background);
+  --rr-cp-radius: var(--p-content-border-radius);
+  --rr-cp-backdrop: var(--p-mask-background);
+}
+
+/* Bootstrap 5.3 (also follows data-bs-theme="dark") */
+.rr-cp {
+  --rr-cp-bg: var(--bs-body-bg);
+  --rr-cp-fg: var(--bs-body-color);
+  --rr-cp-muted: var(--bs-secondary-color);
+  --rr-cp-border: var(--bs-border-color);
+  --rr-cp-accent: var(--bs-primary);
+  --rr-cp-highlight: var(--bs-primary);
+  --rr-cp-item-active-bg: var(--bs-tertiary-bg);
+  --rr-cp-radius: var(--bs-border-radius-lg);
+  --rr-cp-font: var(--bs-body-font-family);
+  --rr-cp-shadow: var(--bs-box-shadow-lg);
+}
+```
+
+Tailwind and shadcn-style setups have no fixed token names (each project defines its own), so map the variables the same way to yours, e.g. `--rr-cp-bg: var(--background)`.
+
 ## Theming
 
 The styles use CSS variables with zero-specificity defaults, so any rule of yours wins.
@@ -308,18 +419,18 @@ Set them on `.rr-cp` (the overlay), and on `.rr-cp[data-theme='dark']` for the d
 }
 ```
 
-| Variable | Purpose |
-| --- | --- |
+| Variable                                                      | Purpose                                |
+| ------------------------------------------------------------- | -------------------------------------- |
 | `--rr-cp-bg`, `--rr-cp-fg`, `--rr-cp-muted`, `--rr-cp-border` | Surface, text, secondary text, borders |
-| `--rr-cp-accent` | Active row marker, spinner |
-| `--rr-cp-item-active-bg` | Active row background |
-| `--rr-cp-highlight`, `--rr-cp-highlight-bg` | Matched characters |
-| `--rr-cp-kbd-bg`, `--rr-cp-kbd-fg` | Shortcut keys |
-| `--rr-cp-backdrop`, `--rr-cp-shadow` | Overlay and dialog shadow |
-| `--rr-cp-font`, `--rr-cp-font-size` | Typography |
-| `--rr-cp-width`, `--rr-cp-max-height`, `--rr-cp-top` | Dialog size and position |
-| `--rr-cp-radius`, `--rr-cp-item-radius` | Corners |
-| `--rr-cp-z-index`, `--rr-cp-duration` | Stacking and animation length |
+| `--rr-cp-accent`                                              | Active row marker, spinner             |
+| `--rr-cp-item-active-bg`                                      | Active row background                  |
+| `--rr-cp-highlight`, `--rr-cp-highlight-bg`                   | Matched characters                     |
+| `--rr-cp-kbd-bg`, `--rr-cp-kbd-fg`                            | Shortcut keys                          |
+| `--rr-cp-backdrop`, `--rr-cp-shadow`                          | Overlay and dialog shadow              |
+| `--rr-cp-font`, `--rr-cp-font-size`                           | Typography                             |
+| `--rr-cp-width`, `--rr-cp-max-height`, `--rr-cp-top`          | Dialog size and position               |
+| `--rr-cp-radius`, `--rr-cp-item-radius`                       | Corners                                |
+| `--rr-cp-z-index`, `--rr-cp-duration`                         | Stacking and animation length          |
 
 Class names (`rr-cp-dialog`, `rr-cp-item`, `rr-cp-item-active`, `rr-cp-match`, `rr-cp-group-label`,
 `rr-cp-empty`, …) are stable too, if you need more than variables.
@@ -345,6 +456,7 @@ npm start            # demo on http://localhost:4200
 npm test             # unit tests (Vitest)
 npm run lint
 npm run build        # library (dist/ngx-command-palette) + demo
+npm run build:demo && npm run e2e   # browser flows and axe-core on the demo (needs Chromium)
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).

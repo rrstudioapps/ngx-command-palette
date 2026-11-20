@@ -20,6 +20,15 @@ npm test
 npm run build
 ```
 
+For changes to the UI or the keyboard behavior, also run the browser checks (keyboard flows and
+axe-core accessibility on the demo, in light and dark). They need a Chromium for `playwright-core`:
+`npx playwright-core install chromium`, or `E2E_CHROMIUM=/path/to/chromium`.
+
+```bash
+npm run build:demo
+npm run e2e
+```
+
 - Keep the library free of runtime dependencies besides Angular.
 - Add or update unit tests for logic changes (`*.spec.ts` next to the code).
 - Keep the palette accessible: check keyboard use and run axe on the demo when you change the template.
