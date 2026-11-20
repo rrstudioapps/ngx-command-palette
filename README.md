@@ -10,7 +10,7 @@ standalone components, signals, zoneless-ready and **no dependencies besides Ang
 
 **[Live demo →](https://demo.rr-dev.eu/command-palette/)**
 
-![ngx-command-palette demo: fuzzy search, theme switch and async customer search](https://raw.githubusercontent.com/rrstudioapps/ngx-command-palette/main/docs/demo.gif)
+![ngx-command-palette demo: fuzzy search, sub-palettes, theme switch and async customer search](https://raw.githubusercontent.com/rrstudioapps/ngx-command-palette/main/docs/demo.gif)
 
 ## Features
 
@@ -353,10 +353,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 [MIT](LICENSE) © 2026 rrstudio
 
-## Need a full dashboard? Check out Providentia
+## Also by rrstudio
 
-**Providentia** is a complete Angular admin dashboard template by the same author: analytics,
-customer tables, report builder, billing, roles, light and dark themes, and a command palette
-built in.
-
-**[See the Providentia live demo →](https://demo.rr-dev.eu/providentia/overview)**
+Looking for a complete Angular admin dashboard? See the live demos of the
+[dashboard templates](https://demo.rr-dev.eu/) by the same author, with this kind of command palette built in.

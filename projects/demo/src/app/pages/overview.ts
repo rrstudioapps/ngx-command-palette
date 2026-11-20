@@ -50,16 +50,10 @@ import { LINKS } from '../shared/data';
       </article>
     </section>
 
-    <section class="card promo" aria-label="Providentia">
-      <div>
-        <h2>Need a full dashboard?</h2>
-        <p>
-          Providentia is a complete Angular admin template with this kind of command palette built
-          in.
-        </p>
-      </div>
-      <a class="button" [href]="links.providentia">See Providentia →</a>
-    </section>
+    <p class="more">
+      Also by rrstudio: <a [href]="links.demos">Angular dashboard templates</a> with this kind of
+      command palette built in.
+    </p>
   `,
 })
 export default class Overview {
