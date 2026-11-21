@@ -1,5 +1,10 @@
 @if (service.isOpen()) {
-  <div class="rr-cp" [attr.data-theme]="resolvedTheme()" (mousedown)="onOverlayDown($event)">
+  <div
+    class="rr-cp"
+    [class.rr-cp-center]="config.position === 'center'"
+    [attr.data-theme]="resolvedTheme()"
+    (mousedown)="onOverlayDown($event)"
+  >
     <div
       #dialog
       class="rr-cp-dialog"

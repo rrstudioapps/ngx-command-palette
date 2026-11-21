@@ -2,6 +2,13 @@
 /* © 2026 rrstudio — ngx-command-palette */
 
 /*
+ * Every other value is a variable too, with today's value as the fallback: --rr-cp-gutter,
+ * --rr-cp-border-width, --rr-cp-line-height, --rr-cp-search-border, --rr-cp-search-icon-size,
+ * --rr-cp-back-icon-size, --rr-cp-path-*, --rr-cp-focus-outline, --rr-cp-focus-offset,
+ * --rr-cp-group-gap, --rr-cp-group-border, --rr-cp-group-label-*, --rr-cp-item-min-height,
+ * --rr-cp-item-disabled-opacity, --rr-cp-icon-size, --rr-cp-kbd-*, --rr-cp-status-border,
+ * --rr-cp-empty-padding, --rr-cp-spinner-*. The full list is in the README.
+ *
  * Spacing, sizing and weight variables (--rr-cp-search-padding, --rr-cp-search-gap, --rr-cp-input-height,
  * --rr-cp-input-font-size, --rr-cp-input-focus-outline, --rr-cp-list-padding, --rr-cp-item-padding,
  * --rr-cp-item-gap, --rr-cp-label-weight, --rr-cp-match-weight, --rr-cp-description-size,
@@ -64,7 +71,7 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: var(--rr-cp-top) 16px 16px;
+  padding: var(--rr-cp-top) var(--rr-cp-gutter, 16px) var(--rr-cp-gutter, 16px);
   background: var(--rr-cp-backdrop);
   color-scheme: light;
   animation: rr-cp-fade var(--rr-cp-duration) ease-out;
@@ -74,6 +81,12 @@
   color-scheme: dark;
 }
 
+/* `position: 'center'`: the window is centered vertically; `--rr-cp-top` no longer applies */
+.rr-cp.rr-cp-center {
+  align-items: center;
+  padding-top: var(--rr-cp-gutter, 16px);
+}
+
 .rr-cp-dialog {
   box-sizing: border-box;
   display: flex;
@@ -81,14 +94,14 @@
   width: 100%;
   max-width: var(--rr-cp-width);
   overflow: hidden;
-  border: 1px solid var(--rr-cp-border);
+  border: var(--rr-cp-border-width, 1px) solid var(--rr-cp-border);
   border-radius: var(--rr-cp-radius);
   background: var(--rr-cp-bg);
   color: var(--rr-cp-fg);
   box-shadow: var(--rr-cp-shadow);
   font-family: var(--rr-cp-font);
   font-size: var(--rr-cp-font-size);
-  line-height: 1.4;
+  line-height: var(--rr-cp-line-height, 1.4);
   animation: rr-cp-pop var(--rr-cp-duration) ease-out;
 }
 
@@ -97,25 +110,25 @@
   align-items: center;
   gap: var(--rr-cp-search-gap, 10px);
   padding: var(--rr-cp-search-padding, 0 14px);
-  border-bottom: 1px solid var(--rr-cp-border);
+  border-bottom: var(--rr-cp-search-border, 1px solid var(--rr-cp-border));
 }
 
 /* Sub-palettes: the path of the opened parents, above the search field */
 .rr-cp-path {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 10px 14px 0;
+  gap: var(--rr-cp-path-gap, 4px);
+  padding: var(--rr-cp-path-padding, 10px 14px 0);
   color: var(--rr-cp-muted);
-  font-size: 0.8125rem;
+  font-size: var(--rr-cp-path-size, 0.8125rem);
 }
 
 .rr-cp-path button {
   display: inline-flex;
   align-items: center;
-  padding: 2px 6px;
+  padding: var(--rr-cp-path-button-padding, 2px 6px);
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--rr-cp-path-button-radius, 6px);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -128,14 +141,14 @@
 }
 
 .rr-cp-path button:focus-visible {
-  outline: 2px solid var(--rr-cp-accent);
-  outline-offset: 1px;
+  outline: var(--rr-cp-focus-outline, 2px solid var(--rr-cp-accent));
+  outline-offset: var(--rr-cp-focus-offset, 1px);
 }
 
 .rr-cp-path-current {
-  padding: 2px 6px;
+  padding: var(--rr-cp-path-button-padding, 2px 6px);
   color: var(--rr-cp-fg);
-  font-weight: 600;
+  font-weight: var(--rr-cp-path-current-weight, 600);
 }
 
 .rr-cp-chevron {
@@ -143,8 +156,15 @@
   color: var(--rr-cp-muted);
 }
 
+.rr-cp-path-back svg {
+  width: var(--rr-cp-back-icon-size, 16px);
+  height: var(--rr-cp-back-icon-size, 16px);
+}
+
 .rr-cp-search-icon {
   flex: none;
+  width: var(--rr-cp-search-icon-size, 18px);
+  height: var(--rr-cp-search-icon-size, 18px);
   color: var(--rr-cp-muted);
 }
 
@@ -191,22 +211,23 @@
 }
 
 .rr-cp-group + .rr-cp-group {
-  margin-top: 4px;
+  margin-top: var(--rr-cp-group-gap, 4px);
+  border-top: var(--rr-cp-group-border, none);
 }
 
 .rr-cp-group-label {
-  padding: 8px 10px 4px;
+  padding: var(--rr-cp-group-label-padding, 8px 10px 4px);
   color: var(--rr-cp-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-size: var(--rr-cp-group-label-size, 0.75rem);
+  font-weight: var(--rr-cp-group-label-weight, 600);
+  letter-spacing: var(--rr-cp-group-label-spacing, 0.02em);
 }
 
 .rr-cp-item {
   display: flex;
   align-items: center;
   gap: var(--rr-cp-item-gap, 10px);
-  min-height: 40px;
+  min-height: var(--rr-cp-item-min-height, 40px);
   padding: var(--rr-cp-item-padding, 6px 10px);
   border-radius: var(--rr-cp-item-radius);
   cursor: pointer;
@@ -221,7 +242,7 @@
 
 .rr-cp-item[aria-disabled='true'] {
   cursor: default;
-  opacity: 0.5;
+  opacity: var(--rr-cp-item-disabled-opacity, 0.5);
 }
 
 .rr-cp-icon {
@@ -229,8 +250,8 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: var(--rr-cp-icon-size, 20px);
+  height: var(--rr-cp-icon-size, 20px);
   color: var(--rr-cp-muted);
 }
 
@@ -273,47 +294,47 @@
 .rr-cp-shortcut {
   display: inline-flex;
   flex: none;
-  gap: 4px;
+  gap: var(--rr-cp-kbd-gap, 4px);
 }
 
 .rr-cp kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
+  min-width: var(--rr-cp-kbd-size, 20px);
+  height: var(--rr-cp-kbd-size, 20px);
+  padding: var(--rr-cp-kbd-padding, 0 5px);
   box-sizing: border-box;
-  border: 1px solid var(--rr-cp-border);
-  border-radius: 4px;
+  border: var(--rr-cp-kbd-border, 1px solid var(--rr-cp-border));
+  border-radius: var(--rr-cp-kbd-radius, 4px);
   background: var(--rr-cp-kbd-bg);
   color: var(--rr-cp-kbd-fg);
   font-family: inherit;
-  font-size: 0.6875rem;
-  font-weight: 500;
+  font-size: var(--rr-cp-kbd-font-size, 0.6875rem);
+  font-weight: var(--rr-cp-kbd-weight, 500);
 }
 
 .rr-cp-status {
   padding: var(--rr-cp-status-padding, 8px 14px);
-  border-top: 1px solid var(--rr-cp-border);
+  border-top: var(--rr-cp-status-border, 1px solid var(--rr-cp-border));
   color: var(--rr-cp-muted);
   font-size: var(--rr-cp-status-size, 0.75rem);
 }
 
 .rr-cp-empty {
-  padding: 32px 16px;
+  padding: var(--rr-cp-empty-padding, 32px 16px);
   color: var(--rr-cp-muted);
   text-align: center;
 }
 
 .rr-cp-spinner {
   flex: none;
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--rr-cp-border);
-  border-top-color: var(--rr-cp-accent);
+  width: var(--rr-cp-spinner-size, 14px);
+  height: var(--rr-cp-spinner-size, 14px);
+  border: var(--rr-cp-spinner-width, 2px) solid var(--rr-cp-spinner-track, var(--rr-cp-border));
+  border-top-color: var(--rr-cp-spinner-color, var(--rr-cp-accent));
   border-radius: 50%;
-  animation: rr-cp-spin 0.7s linear infinite;
+  animation: rr-cp-spin var(--rr-cp-spinner-duration, 0.7s) linear infinite;
 }
 
 .rr-cp-sr-only {

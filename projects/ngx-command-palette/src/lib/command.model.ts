@@ -34,6 +34,11 @@ interface CommandBase {
   readonly hotkey?: string | readonly string[];
   /** Extra words matched by the search but not shown. */
   readonly keywords?: readonly string[];
+  /**
+   * Overrides the `closeOnSelect` option for this command: `false` keeps the palette open after it
+   * runs, `true` closes it even if the option is `false`. Ignored by sub-palette parents.
+   */
+  readonly closeOnRun?: boolean;
   /** A disabled command is shown but cannot be executed or selected. */
   readonly disabled?: boolean;
   /**

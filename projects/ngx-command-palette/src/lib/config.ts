@@ -8,6 +8,12 @@ import { matchCommand, type FuzzyMatch } from './fuzzy';
 
 export type CommandPaletteTheme = 'light' | 'dark' | 'auto';
 
+/** Vertical position of the window: near the top (`--rr-cp-top`) or centered. */
+export type CommandPalettePosition = 'top' | 'center';
+
+/** Why the palette closed, as passed to `onClose`. */
+export type CommandPaletteCloseReason = 'escape' | 'overlay' | 'run' | 'toggle' | 'api';
+
 /** Texts of the palette, for translations. */
 export interface CommandPaletteLabels {
   readonly placeholder: string;
@@ -97,6 +103,40 @@ export interface CommandPaletteConfig {
    * Default: `true`.
    */
   readonly shortcutEnabled: boolean | (() => boolean);
+  /**
+   * Whether the shortcut calls `preventDefault()` on the key event. Set it to `false` to let the key
+   * reach the browser or other listeners too. Default: `true`.
+   */
+  readonly shortcutPreventDefault: boolean;
+  /**
+   * Closes the palette after a command is executed. A command's own `closeOnRun` wins over this.
+   * Commands that open a sub-palette or ask for a value never close it. Default: `true`.
+   */
+  readonly closeOnSelect: boolean;
+  /** Called after the palette opened (not when `open()` is called while it is already open). */
+  readonly onOpen?: () => void;
+  /** Called after the palette closed, with the reason. */
+  readonly onClose?: (reason: CommandPaletteCloseReason) => void;
+  /**
+   * Called after a command ran (or navigated), also for route commands and when the palette stays open.
+   * Not called when the command throws or its promise rejects.
+   */
+  readonly onRun?: (command: Command) => void;
+  /**
+   * Where the focus goes when the palette closes. `true` (default) gives it back to the element that
+   * had it when the palette opened, which is the accessible behavior. `false` does not move it. A
+   * function returns the element to focus instead; if it returns `null`, an element that is no longer
+   * in the page or throws, the focus goes back to the element that had it before opening.
+   */
+  readonly restoreFocus: boolean | (() => HTMLElement | null);
+  /** Vertical position of the window. `--rr-cp-top` applies to `top`. Default: `top`. */
+  readonly position: CommandPalettePosition;
+  /**
+   * Order of the sections while the search is empty: section ids (`pinned`, `recent`, `g:<group>`,
+   * `p:<provider id>`) or group names. Sections not listed keep their usual order after the listed
+   * ones, except Pinned and Recent, which stay on top unless listed. Default: none.
+   */
+  readonly sectionOrder: readonly string[];
   /** `auto` follows `prefers-color-scheme`. Default: `auto`. */
   readonly theme: CommandPaletteTheme;
   /** "Recent" section shown with an empty query; `false` disables it. */
@@ -163,6 +203,11 @@ export const DEFAULT_COMMAND_PALETTE_CONFIG: CommandPaletteConfig = {
   shortcut: 'mod+k',
   shortcutInFields: true,
   shortcutEnabled: true,
+  shortcutPreventDefault: true,
+  closeOnSelect: true,
+  restoreFocus: true,
+  position: 'top',
+  sectionOrder: [],
   theme: 'auto',
   recent: { max: 5, storageKey: 'rr-cp:recent' },
   debounceMs: 200,
@@ -215,4 +260,26 @@ export function provideCommandPalette(options: CommandPaletteOptions = {}): Envi
   return makeEnvironmentProviders([
     { provide: COMMAND_PALETTE_CONFIG, useValue: resolveConfig(options) },
   ]);
+}
+
+/**
+ * Runs a user callback so that an error it throws is reported but never breaks the palette.
+ * Promise rejections of async callbacks are reported too.
+ */
+export function safeCall<A extends unknown[]>(
+  name: string,
+  callback: ((...args: A) => unknown) | undefined,
+  ...args: A
+): void {
+  if (!callback) return;
+  const report = (error: unknown) =>
+    console.error(`ngx-command-palette: the ${name} callback threw`, error);
+  try {
+    const result = callback(...args);
+    if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
+      (result as PromiseLike<unknown>).then(undefined, report);
+    }
+  } catch (error) {
+    report(error);
+  }
 }

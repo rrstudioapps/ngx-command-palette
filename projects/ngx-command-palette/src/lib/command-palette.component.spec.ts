@@ -782,4 +782,69 @@ describe('CommandPaletteComponent', () => {
       expect(status().textContent!.trim()).toBe('Colors: 2 many');
     });
   });
+
+  describe('behavior options', () => {
+    async function create(options: Parameters<typeof provideCommandPalette>[0]) {
+      localStorage.clear();
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), provideCommandPalette({ recent: false, ...options })],
+      });
+      service = TestBed.inject(CommandPaletteService);
+      service.register([{ id: 'a', label: 'Alpha', run: () => undefined }]);
+      fixture = TestBed.createComponent(Host);
+      await fixture.whenStable();
+    }
+
+    it('passes the reason of each way of closing to onClose', async () => {
+      const onClose = vi.fn();
+      await create({ onClose });
+      await open();
+      keydown(input(), 'Escape');
+      expect(onClose).toHaveBeenLastCalledWith('escape');
+      await open();
+      q('.rr-cp')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      expect(onClose).toHaveBeenLastCalledWith('overlay');
+      keydown(document.body, 'k', { ctrlKey: true });
+      expect(service.isOpen()).toBe(true);
+      keydown(document.body, 'k', { ctrlKey: true });
+      expect(onClose).toHaveBeenLastCalledWith('toggle');
+      await open();
+      options()[0].click();
+      expect(onClose).toHaveBeenLastCalledWith('run');
+      expect(onClose).toHaveBeenCalledTimes(4);
+    });
+
+    it('closeOnSelect: false keeps the window and the focus in the field after a click', async () => {
+      await create({ closeOnSelect: false });
+      await open();
+      options()[0].click();
+      await fixture.whenStable();
+      expect(service.isOpen()).toBe(true);
+      expect(document.activeElement).toBe(input());
+    });
+
+    it('shortcutPreventDefault: false leaves the key event alone', async () => {
+      await create({ shortcutPreventDefault: false });
+      const event = keydown(document.body, 'k', { ctrlKey: true });
+      expect(service.isOpen()).toBe(true);
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('the shortcut prevents the default by default', async () => {
+      await create({});
+      expect(keydown(document.body, 'k', { ctrlKey: true }).defaultPrevented).toBe(true);
+    });
+
+    it('position: center adds a modifier class and top does not', async () => {
+      await create({ position: 'center' });
+      await open();
+      expect(q('.rr-cp')!.classList.contains('rr-cp-center')).toBe(true);
+    });
+
+    it('position: top (default) has no modifier class', async () => {
+      await create({});
+      await open();
+      expect(q('.rr-cp')!.classList.contains('rr-cp-center')).toBe(false);
+    });
+  });
 });

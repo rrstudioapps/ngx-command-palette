@@ -27,6 +27,8 @@ import type {
 import {
   COMMAND_PALETTE_CONFIG,
   currentLabels,
+  safeCall,
+  type CommandPaletteCloseReason,
   type CommandPaletteRecentOptions,
   type CommandPrefix,
 } from './config';
@@ -174,7 +176,8 @@ export class CommandPaletteService {
 
   /** Opens the palette, optionally with an initial query. */
   open(query = ''): void {
-    if (!this._isOpen()) {
+    const wasOpen = this._isOpen();
+    if (!wasOpen) {
       const active = this.document.activeElement;
       // No instanceof HTMLElement: the class does not exist during SSR
       this.returnFocus =
@@ -188,10 +191,32 @@ export class CommandPaletteService {
     this.pathIds.set([]);
     this.promptCommand.set(null);
     this.setQuery(query);
+    if (!wasOpen) safeCall('onOpen', this.config.onOpen);
   }
 
   /** Closes the palette, cancels pending searches and restores the focus. */
   close(): void {
+    this.closeWith('api');
+  }
+
+  /** Gives the focus back as the `restoreFocus` option says. */
+  private restoreFocus(previous: HTMLElement | null): void {
+    const option = this.config.restoreFocus;
+    if (option === false) return;
+    let target: HTMLElement | null = previous;
+    if (typeof option === 'function') {
+      try {
+        const custom = option();
+        if (custom?.isConnected && typeof custom.focus === 'function') target = custom;
+      } catch (error) {
+        console.error('ngx-command-palette: the restoreFocus function threw', error);
+      }
+    }
+    if (target?.isConnected) target.focus({ preventScroll: true });
+  }
+
+  /** Closes the palette telling `onClose` why. */
+  closeWith(reason: CommandPaletteCloseReason): void {
     if (!this._isOpen()) return;
     this._isOpen.set(false);
     this.cancelAll();
@@ -199,13 +224,14 @@ export class CommandPaletteService {
     this.pathIds.set([]);
     this.promptCommand.set(null);
     this.providerState.set(new Map());
-    const target = this.returnFocus;
+    const previous = this.returnFocus;
     this.returnFocus = null;
-    if (target?.isConnected) target.focus({ preventScroll: true });
+    this.restoreFocus(previous);
+    safeCall('onClose', this.config.onClose, reason);
   }
 
   toggle(): void {
-    if (this._isOpen()) this.close();
+    if (this._isOpen()) this.closeWith('toggle');
     else this.open();
   }
 
@@ -298,7 +324,13 @@ export class CommandPaletteService {
     }
     if (this.recentStore && this.recentsOn())
       this.recents.set(this.recentStore.add(command, this.recents()));
-    this.close();
+    const closes = command.closeOnRun ?? this.config.closeOnSelect;
+    if (closes) this.closeWith('run');
+    else if (value !== undefined) {
+      // Stays open: leave the value step and show the list again
+      this.promptCommand.set(null);
+      this.setQuery('');
+    }
     if (command.route !== undefined) {
       if (!this.router) throw new Error('ngx-command-palette: route commands need provideRouter()');
       const { route, navigationExtras } = command;
@@ -308,6 +340,7 @@ export class CommandPaletteService {
     } else {
       await command.run(value === undefined ? { query } : { query, value });
     }
+    safeCall('onRun', this.config.onRun, command);
   }
 
   /** Removes all recents. */
@@ -415,7 +448,23 @@ export class CommandPaletteService {
         });
       if (items.length) sections.push({ id: `p:${provider.id}`, label: provider.group, items });
     }
-    return sections;
+    return query || prompt ? sections : this.orderSections(sections);
+  }
+
+  /** Applies `sectionOrder` (empty search only): listed sections first, then Pinned/Recent, then the rest. */
+  private orderSections(sections: CommandSection[]): CommandSection[] {
+    const order = this.config.sectionOrder;
+    if (!order.length) return sections;
+    const rank = (s: CommandSection): number => {
+      let i = order.indexOf(s.id);
+      if (i < 0) i = order.indexOf(s.label);
+      return i;
+    };
+    const listed = sections.filter((s) => rank(s) >= 0).sort((a, b) => rank(a) - rank(b));
+    const rest = sections.filter((s) => rank(s) < 0);
+    // Not listed: Pinned and Recent keep their place on top, the others follow in registration order
+    const top = rest.filter((s) => s.id === PINNED_SECTION_ID || s.id === RECENT_SECTION_ID);
+    return [...top, ...listed, ...rest.filter((s) => !top.includes(s))];
   }
 
   private recentResults(commands: readonly Command[]): CommandResult[] {

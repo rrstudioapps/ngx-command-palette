@@ -217,7 +217,7 @@ export class CommandPaletteComponent {
     const items = this.items();
     switch (action) {
       case 'close':
-        this.service.close();
+        this.service.closeWith('escape');
         return;
       case 'select': {
         const item = items[this.activeIndex()];
@@ -245,7 +245,7 @@ export class CommandPaletteComponent {
 
   protected onOverlayDown(event: MouseEvent): void {
     // Only a click on the backdrop, not inside the dialog
-    if (event.target === event.currentTarget) this.service.close();
+    if (event.target === event.currentTarget) this.service.closeWith('overlay');
   }
 
   protected onDocumentKeydown(event: KeyboardEvent): void {
@@ -269,7 +269,7 @@ export class CommandPaletteComponent {
     );
     // `shortcutEnabled` only stops it from opening: an open palette can always be closed
     if (hit && (this.service.isOpen() || this.shortcutEnabled())) {
-      event.preventDefault();
+      if (this.config.shortcutPreventDefault) event.preventDefault();
       this.activeKey.set(null);
       this.service.toggle();
     }

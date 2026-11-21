@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // © 2026 rrstudio — ngx-command-palette
 
-import { Component, signal } from '@angular/core';
+import { Component, DOCUMENT, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 
@@ -1223,6 +1223,359 @@ describe('CommandPaletteService', () => {
       } finally {
         vi.unstubAllGlobals();
       }
+    });
+  });
+
+  describe('closeOnSelect, closeOnRun and callbacks', () => {
+    const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    afterEach(() => vi.restoreAllMocks());
+
+    it('closes after running by default', async () => {
+      const service = setup();
+      service.register([{ id: 'a', label: 'Alpha', run: noop }]);
+      service.open();
+      await service.execute(service.commands()[0]);
+      expect(service.isOpen()).toBe(false);
+    });
+
+    it('closeOnSelect: false keeps the palette and the query open, but still records the run', async () => {
+      const onRun = vi.fn();
+      const service = setup({ closeOnSelect: false, onRun });
+      const run = vi.fn();
+      service.register([{ id: 'a', label: 'Alpha', run }]);
+      service.open('alp');
+      await service.execute(service.commands()[0]);
+      expect(run).toHaveBeenCalledWith({ query: 'alp' });
+      expect(service.isOpen()).toBe(true);
+      expect(service.query()).toBe('alp');
+      expect(onRun).toHaveBeenCalledTimes(1);
+      service.close();
+      service.open();
+      expect(labels(service)[0]).toEqual(['Recent', ['Alpha']]);
+    });
+
+    it('closeOnRun overrides the option in both directions', async () => {
+      const service = setup({ closeOnSelect: false });
+      service.register([
+        { id: 'a', label: 'Alpha', run: noop, closeOnRun: true },
+        { id: 'b', label: 'Beta', run: noop },
+      ]);
+      service.open();
+      await service.execute(service.commands()[1]);
+      expect(service.isOpen()).toBe(true);
+      await service.execute(service.commands()[0]);
+      expect(service.isOpen()).toBe(false);
+
+      TestBed.resetTestingModule();
+      const other = setup();
+      other.register([{ id: 'c', label: 'Gamma', run: noop, closeOnRun: false }]);
+      other.open();
+      await other.execute(other.commands()[0]);
+      expect(other.isOpen()).toBe(true);
+    });
+
+    it('sub-palette parents never close it, whatever closeOnRun says', async () => {
+      const service = setup();
+      service.register([
+        {
+          id: 'p',
+          label: 'Parent',
+          closeOnRun: true,
+          children: [{ id: 'c', label: 'Child', run: noop }],
+        },
+      ]);
+      service.open();
+      await service.execute(service.commands()[0]);
+      expect(service.isOpen()).toBe(true);
+      expect(service.path().length).toBe(1);
+    });
+
+    it('a prompt command that stays open goes back to the list', async () => {
+      const run = vi.fn();
+      const service = setup({ closeOnSelect: false });
+      service.register([{ id: 'n', label: 'New', prompt: 'Name', run }]);
+      service.open();
+      await service.execute(service.commands()[0]);
+      service.setQuery('Doc');
+      await service.execute(service.commands()[0]);
+      expect(run).toHaveBeenCalledWith({ query: 'Doc', value: 'Doc' });
+      expect(service.isOpen()).toBe(true);
+      expect(service.prompt()).toBeNull();
+      expect(service.query()).toBe('');
+    });
+
+    it('onOpen and onClose fire once per transition, with the reason', () => {
+      const onOpen = vi.fn();
+      const onClose = vi.fn();
+      const service = setup({ onOpen, onClose });
+      service.close();
+      expect(onClose).not.toHaveBeenCalled();
+      service.open();
+      service.open('x');
+      expect(onOpen).toHaveBeenCalledTimes(1);
+      service.close();
+      expect(onClose).toHaveBeenLastCalledWith('api');
+      service.toggle();
+      service.toggle();
+      expect(onClose).toHaveBeenLastCalledWith('toggle');
+      service.open();
+      service.closeWith('escape');
+      expect(onClose).toHaveBeenLastCalledWith('escape');
+      service.open();
+      service.closeWith('overlay');
+      expect(onClose).toHaveBeenLastCalledWith('overlay');
+      expect(onClose).toHaveBeenCalledTimes(4);
+    });
+
+    it('closes with reason run and calls onRun after the command, for actions and routes', async () => {
+      const order: string[] = [];
+      const service = setup({
+        onClose: (r) => order.push(`close:${r}`),
+        onRun: (c) => order.push(`run:${c.id}`),
+      });
+      service.register([
+        { id: 'a', label: 'Alpha', run: () => void order.push('action') },
+        { id: 'r', label: 'Route', route: '/x' },
+      ]);
+      TestBed.inject(Router).resetConfig([{ path: 'x', children: [] }]);
+      service.open();
+      await service.execute(service.commands()[0]);
+      service.open();
+      await service.execute(service.commands()[1]);
+      expect(order).toEqual(['close:run', 'action', 'run:a', 'close:run', 'run:r']);
+    });
+
+    it('does not call onRun when the command fails', async () => {
+      const onRun = vi.fn();
+      const service = setup({ onRun });
+      service.register([
+        {
+          id: 'a',
+          label: 'Alpha',
+          run: () => {
+            throw new Error('boom');
+          },
+        },
+      ]);
+      await expect(service.execute(service.commands()[0])).rejects.toThrow('boom');
+      expect(onRun).not.toHaveBeenCalled();
+    });
+
+    it('an error thrown by a callback is reported and does not break the palette', async () => {
+      const error = quiet();
+      const boom = () => {
+        throw new Error('callback');
+      };
+      const service = setup({ onOpen: boom, onClose: boom, onRun: boom });
+      const run = vi.fn();
+      service.register([{ id: 'a', label: 'Alpha', run }]);
+      expect(() => service.open()).not.toThrow();
+      expect(service.isOpen()).toBe(true);
+      await service.execute(service.commands()[0]);
+      expect(run).toHaveBeenCalled();
+      expect(service.isOpen()).toBe(false);
+      expect(error).toHaveBeenCalledTimes(3);
+    });
+
+    it('a rejected promise returned by a callback is reported too', async () => {
+      const error = quiet();
+      const service = setup({
+        onOpen: () => Promise.reject(new Error('async')) as unknown as void,
+      });
+      service.open();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(error).toHaveBeenCalledTimes(1);
+    });
+
+    it('callbacks may call back into the service', () => {
+      const holder: { service?: CommandPaletteService } = {};
+      const service = setup({ onOpen: () => holder.service!.close() });
+      holder.service = service;
+      service.open();
+      expect(service.isOpen()).toBe(false);
+    });
+
+    it('works without a DOM (SSR)', () => {
+      const onOpen = vi.fn();
+      const onClose = vi.fn();
+      TestBed.configureTestingModule({
+        providers: [
+          provideRouter([]),
+          provideCommandPalette({ onOpen, onClose }),
+          { provide: DOCUMENT, useValue: {} },
+        ],
+      });
+      const service = TestBed.inject(CommandPaletteService);
+      expect(() => {
+        service.open();
+        service.close();
+      }).not.toThrow();
+      expect(onOpen).toHaveBeenCalledTimes(1);
+      expect(onClose).toHaveBeenCalledWith('api');
+    });
+
+    it("options can be left out: defaults keep today's behavior", () => {
+      const service = setup();
+      expect(() => {
+        service.open();
+        service.close();
+      }).not.toThrow();
+    });
+  });
+
+  describe('sectionOrder', () => {
+    const commands: Command[] = [
+      { id: 'a', label: 'Alpha', group: 'One', run: noop },
+      { id: 'b', label: 'Beta', group: 'Two', run: noop, pinned: true },
+      { id: 'c', label: 'Gamma', group: 'Three', run: noop },
+    ];
+    const names = (service: CommandPaletteService) => service.sections().map((s) => s.label);
+
+    it('keeps the registration order by default', () => {
+      const service = setup({ recent: false });
+      service.register(commands);
+      expect(names(service)).toEqual(['Pinned', 'One', 'Two', 'Three']);
+    });
+
+    it('lists the named sections first, by group name or by id; the rest follows', () => {
+      const service = setup({ recent: false, sectionOrder: ['Three', 'g:One'] });
+      service.register(commands);
+      expect(names(service)).toEqual(['Pinned', 'Three', 'One', 'Two']);
+    });
+
+    it('Pinned and Recent can be moved by listing them', async () => {
+      const service = setup({ sectionOrder: ['Two', 'recent', 'pinned'] });
+      service.register(commands);
+      await service.execute(service.commands()[0]);
+      service.open();
+      expect(names(service)).toEqual(['Two', 'Recent', 'Pinned', 'One', 'Three']);
+    });
+
+    function setupPlain() {
+      TestBed.resetTestingModule();
+      const plain = setup({ recent: false });
+      plain.register(commands);
+      plain.open();
+      return plain;
+    }
+
+    it('unknown entries are ignored and a search is not reordered', () => {
+      const service = setup({ recent: false, sectionOrder: ['Nope', 'Three'] });
+      service.register(commands);
+      expect(names(service)).toEqual(['Pinned', 'Three', 'One', 'Two']);
+      service.setQuery('a');
+      const plain = setupPlain();
+      plain.setQuery('a');
+      expect(names(service)).toEqual(names(plain));
+    });
+
+    it('orders async provider sections by id', async () => {
+      vi.useFakeTimers();
+      const service = setup({ recent: false, sectionOrder: ['p:srv'] });
+      service.register(commands);
+      service.open();
+      service.registerProvider({
+        id: 'srv',
+        group: 'Server',
+        minQueryLength: 0,
+        search: async () => [{ id: 's', label: 'Remote', route: '/' }],
+      });
+      await vi.advanceTimersByTimeAsync(150);
+      expect(names(service)).toEqual(['Pinned', 'Server', 'One', 'Two', 'Three']);
+    });
+  });
+
+  describe('restoreFocus', () => {
+    let opener: HTMLButtonElement;
+    let other: HTMLButtonElement;
+    beforeEach(() => {
+      opener = document.body.appendChild(document.createElement('button'));
+      other = document.body.appendChild(document.createElement('button'));
+      opener.focus();
+    });
+    afterEach(() => {
+      opener.remove();
+      other.remove();
+      vi.restoreAllMocks();
+    });
+
+    it('gives the focus back to the opener by default', () => {
+      const service = setup();
+      service.open();
+      other.focus();
+      service.close();
+      expect(document.activeElement).toBe(opener);
+    });
+
+    it('false does not move the focus', () => {
+      const service = setup({ restoreFocus: false });
+      service.open();
+      other.focus();
+      service.close();
+      expect(document.activeElement).toBe(other);
+    });
+
+    it('a function chooses the element', () => {
+      const service = setup({ restoreFocus: () => other });
+      service.open();
+      service.close();
+      expect(document.activeElement).toBe(other);
+    });
+
+    it('falls back to the opener when the function returns null or a detached element', () => {
+      const detached = document.createElement('button');
+      let result: HTMLElement | null = null;
+      const service = setup({ restoreFocus: () => result });
+      service.open();
+      service.close();
+      expect(document.activeElement).toBe(opener);
+      result = detached;
+      other.focus();
+      service.open();
+      service.close();
+      // `other` had the focus when the palette opened, so that is where it goes back to
+      expect(document.activeElement).toBe(other);
+    });
+
+    it('falls back to the opener and reports it when the function throws', () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const service = setup({
+        restoreFocus: () => {
+          throw new Error('boom');
+        },
+      });
+      service.open();
+      other.focus();
+      expect(() => service.close()).not.toThrow();
+      expect(document.activeElement).toBe(opener);
+      expect(error).toHaveBeenCalledTimes(1);
+    });
+
+    it('the function is only called on close, and onClose still fires', () => {
+      const fn = vi.fn(() => other);
+      const onClose = vi.fn();
+      const service = setup({ restoreFocus: fn, onClose });
+      service.open();
+      expect(fn).not.toHaveBeenCalled();
+      service.close();
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(onClose).toHaveBeenCalledWith('api');
+    });
+
+    it('works without a DOM (SSR) with a function', () => {
+      TestBed.configureTestingModule({
+        providers: [
+          provideRouter([]),
+          provideCommandPalette({ restoreFocus: () => null }),
+          { provide: DOCUMENT, useValue: {} },
+        ],
+      });
+      const service = TestBed.inject(CommandPaletteService);
+      expect(() => {
+        service.open();
+        service.close();
+      }).not.toThrow();
     });
   });
 });
