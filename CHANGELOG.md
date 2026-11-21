@@ -3,6 +3,17 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
+## [0.8.0] - 2026-11-21
+
+### Added
+
+- Behavior options: `closeOnSelect` (default `true`; `false` keeps the palette open after a command runs), `Command.closeOnRun` (per-command override, in both directions; sub-palette parents are not affected) and `shortcutPreventDefault` (default `true`). With `closeOnSelect: false`, a command with `prompt` returns to the list after it runs.
+- Event callbacks `onOpen()`, `onClose(reason)` (`'escape' | 'overlay' | 'run' | 'toggle' | 'api'`) and `onRun(command)` (after the command ran or navigated, not when it fails). An error or rejected promise from a callback is reported with `console.error` and never breaks the palette. New exported types `CommandPaletteCloseReason` and `CommandPalettePosition`; `CommandPaletteService.closeWith(reason)`.
+- `restoreFocus: boolean | (() => HTMLElement | null)` (default `true`): `false` does not move the focus when the palette closes; a function returns the element to focus, with a fallback to the element that had the focus before opening when it returns `null`, a detached element or throws.
+- `position: 'top' | 'center'` (default `'top'`).
+- `sectionOrder`: order of the sections while the search is empty, by section id or group name.
+- CSS variables for every border, size, spacing and font value that was still fixed: `--rr-cp-gutter`, `--rr-cp-border-width`, `--rr-cp-line-height`, `--rr-cp-search-border`, `--rr-cp-status-border`, `--rr-cp-group-gap`, `--rr-cp-group-border`, `--rr-cp-group-label-*`, `--rr-cp-item-min-height`, `--rr-cp-item-disabled-opacity`, `--rr-cp-icon-size`, `--rr-cp-search-icon-size`, `--rr-cp-back-icon-size`, `--rr-cp-kbd-*`, `--rr-cp-path-*`, `--rr-cp-focus-outline`, `--rr-cp-focus-offset`, `--rr-cp-empty-padding` and `--rr-cp-spinner-*`. Defaults are today's values, so nothing changes unless you set them. The README lists all of them and notes that `inherit` does not work in a CSS variable.
+
 ## [0.7.1] - 2026-11-21
 
 ### Changed
