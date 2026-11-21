@@ -3,6 +3,18 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
+## [0.7.0] - 2026-11-21
+
+### Added
+
+- Display options: `showSectionLabels` (headings stay available to assistive technology when hidden), `showCloseHint`, `highlightMatches` (all default `true`) and `showStatus` (default `false`; shows the status line with the class `rr-cp-status`, still `aria-live`).
+- `labels.resultsOne` and `labels.levelOne`: texts for exactly one result, `{count}` and `{name}` replaced. Without them `results` and `level` are used, so nothing changes by default.
+- CSS variables for layout and weight: `--rr-cp-search-padding`, `--rr-cp-search-gap`, `--rr-cp-input-height`, `--rr-cp-input-font-size`, `--rr-cp-input-focus-outline`, `--rr-cp-list-padding`, `--rr-cp-item-padding`, `--rr-cp-item-gap`, `--rr-cp-label-weight`, `--rr-cp-match-weight`, `--rr-cp-description-size`, `--rr-cp-description-color`, `--rr-cp-description-opacity`, `--rr-cp-item-active-fg`, `--rr-cp-item-active-shadow`, `--rr-cp-status-padding`, `--rr-cp-status-size`. Their defaults are today's values and live as `var()` fallbacks, so they also work when set on `:root` or `body`.
+
+### Fixed
+
+- The search field now resets `box-shadow`, `border-radius` and `appearance` and has a higher specificity, so global app rules such as `input { box-shadow: … }` or `input[type='text'] { border: … }` no longer change it.
+
 ## [0.6.0] - 2026-11-21
 
 ### Added
