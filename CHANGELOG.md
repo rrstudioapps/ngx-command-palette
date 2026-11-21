@@ -3,6 +3,15 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
+## [0.5.0] - 2026-11-21
+
+### Added
+
+- `shortcutInFields` option (default `true`): with `false`, Ctrl/⌘ shortcuts (the palette's and command `hotkey`s) do not fire while typing in an input, textarea, select or contenteditable.
+- `shortcutEnabled` option (boolean, function or signal, default `true`): while `false` the shortcut does not open the palette and the key is left to the page. An open palette can still be closed with it, and `open()` keeps working.
+- `recent.storage` option: where recents are saved, any object with synchronous `getItem`, `setItem` and `removeItem` (`localStorage` by default; `sessionStorage` or an in-memory store also fit). New `RecentStorage` type. Errors and missing storage (SSR) are still swallowed.
+- Tests and docs for `shortcut: []`, which already turned the shortcut off.
+
 ## [0.4.0] - 2026-11-20
 
 ### Added
