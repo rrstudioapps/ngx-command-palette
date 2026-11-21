@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
+## [0.7.1] - 2026-11-21
+
+### Changed
+
+- Development tooling only: `typescript-eslint` 8.73.0 and `eslint` 10.15.0, which resolve the `minimatch` advisory reported by `npm audit`. The published package is unchanged.
+
 ## [0.7.0] - 2026-11-21
 
 ### Added
