@@ -3,6 +3,13 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
+## [0.6.0] - 2026-11-21
+
+### Added
+
+- `labels` accepts a function or a signal returning `Partial<CommandPaletteLabels>`, read reactively: a language change updates the placeholder, status and screen reader texts, section headings (Recent, Pinned) and default group of the open palette. A static object works as before. New `CommandPaletteService.labels` signal and `CommandPaletteConfig.labelsSource`.
+- `recent.enabled` option (boolean, function or signal, default `true`): turning it off hides the Recent section, empties the list in memory and stops recording and saving, keeping what is already stored (`clearRecent()` removes it); turning it on reloads the list from the storage. When it starts off nothing is read from the storage. `recent: false` still disables recents for good.
+
 ## [0.5.0] - 2026-11-21
 
 ### Added
