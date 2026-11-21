@@ -62,7 +62,7 @@ export class CommandPaletteComponent {
   private readonly dialog = viewChild<ElementRef<HTMLElement>>('dialog');
 
   protected readonly uid = `rr-cp-${nextId++}`;
-  protected readonly labels = this.config.labels;
+  protected readonly labels = this.service.labels;
   private readonly apple = isApplePlatform();
   private readonly shortcuts = (typeof this.config.shortcut === 'string'
     ? [this.config.shortcut]
@@ -119,13 +119,13 @@ export class CommandPaletteComponent {
     return index >= 0 ? this.optionId(index) : null;
   });
   protected readonly status = computed(() => {
-    if (this.service.loading()) return this.labels.loading;
+    if (this.service.loading()) return this.labels().loading;
     const count = this.items().length;
-    if (count === 0) return this.labels.empty;
+    if (count === 0) return this.labels().empty;
     const path = this.service.path();
     const prompt = this.service.prompt();
-    if (prompt) return this.labels.prompt.replace('{name}', prompt.label);
-    const template = path.length ? this.labels.level : this.labels.results;
+    if (prompt) return this.labels().prompt.replace('{name}', prompt.label);
+    const template = path.length ? this.labels().level : this.labels().results;
     return template
       .replace('{name}', path[path.length - 1]?.label ?? '')
       .replace('{count}', String(count));
@@ -136,7 +136,7 @@ export class CommandPaletteComponent {
     return prompt ? [...this.service.path(), prompt] : this.service.path();
   });
   protected readonly placeholder = computed(
-    () => this.service.prompt()?.prompt ?? this.labels.placeholder,
+    () => this.service.prompt()?.prompt ?? this.labels().placeholder,
   );
 
   constructor() {

@@ -11,7 +11,7 @@ import {
   injectCommandProvider,
   injectCommands,
 } from './command-palette.service';
-import { provideCommandPalette } from './config';
+import { DEFAULT_COMMAND_PALETTE_LABELS, provideCommandPalette } from './config';
 
 const noop = () => undefined;
 
@@ -1053,6 +1053,176 @@ describe('CommandPaletteService', () => {
       service.open('a');
       await service.execute(service.commands()[0]);
       expect(run).toHaveBeenCalledWith({ query: 'a' });
+    });
+  });
+
+  describe('dynamic labels', () => {
+    it('follows a signal: group, Recent and Pinned headings', async () => {
+      const lang = signal<'en' | 'it'>('en');
+      const service = setup({
+        labels: () =>
+          lang() === 'it' ? { recent: 'Recenti', pinned: 'Fissati', defaultGroup: 'Comandi' } : {},
+      });
+      service.register([
+        { id: 'a', label: 'Alpha', run: noop },
+        { id: 'p', label: 'Pinned one', pinned: true, run: noop },
+      ]);
+      await service.execute(service.commands()[0]);
+      expect(labels(service).map((s) => s[0])).toEqual(['Pinned', 'Recent', 'Commands']);
+      lang.set('it');
+      expect(labels(service).map((s) => s[0])).toEqual(['Fissati', 'Recenti', 'Comandi']);
+      expect(service.labels().loading).toBe('Loading…');
+      lang.set('en');
+      lang.set('it');
+      lang.set('en');
+      expect(labels(service).map((s) => s[0])).toEqual(['Pinned', 'Recent', 'Commands']);
+    });
+
+    it('still accepts a static object, merged with the defaults', () => {
+      const service = setup({ labels: { recent: 'Recenti' } });
+      expect(service.labels().recent).toBe('Recenti');
+      expect(service.labels().empty).toBe(DEFAULT_COMMAND_PALETTE_LABELS.empty);
+    });
+
+    it('accepts a plain function with a partial result', () => {
+      const service = setup({ labels: () => ({ empty: 'Niente' }) });
+      expect(service.labels().empty).toBe('Niente');
+      expect(service.labels().back).toBe(DEFAULT_COMMAND_PALETTE_LABELS.back);
+    });
+  });
+
+  describe('recent.enabled', () => {
+    const memory = (initial?: unknown) => {
+      const data = new Map<string, string>();
+      if (initial) data.set('rr-cp:recent', JSON.stringify(initial));
+      return {
+        data,
+        getItem: vi.fn((k: string) => data.get(k) ?? null),
+        setItem: vi.fn((k: string, v: string) => void data.set(k, v)),
+        removeItem: vi.fn((k: string) => void data.delete(k)),
+      };
+    };
+    const alpha = { id: 'a', label: 'Alpha', run: noop };
+    const beta = { id: 'b', label: 'Beta', run: noop };
+
+    it('off at start: nothing is read, shown or saved', async () => {
+      const storage = memory([{ id: 'a', label: 'Alpha' }]);
+      const service = setup({ recent: { storage, enabled: false } });
+      service.register([alpha, beta]);
+      expect(labels(service)).toEqual([['Commands', ['Alpha', 'Beta']]]);
+      await service.execute(service.commands()[1]);
+      expect(storage.getItem).not.toHaveBeenCalled();
+      expect(storage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('on to off: the section goes away, new runs are not saved, the stored data stays', async () => {
+      const enabled = signal(true);
+      const storage = memory();
+      const service = setup({ recent: { storage, enabled } });
+      service.register([alpha, beta]);
+      await service.execute(service.commands()[0]);
+      expect(labels(service)[0]).toEqual(['Recent', ['Alpha']]);
+      const saved = storage.data.get('rr-cp:recent');
+      enabled.set(false);
+      expect(labels(service)).toEqual([['Commands', ['Alpha', 'Beta']]]);
+      await service.execute(service.commands()[1]);
+      expect(storage.data.get('rr-cp:recent')).toBe(saved);
+      expect(storage.removeItem).not.toHaveBeenCalled();
+    });
+
+    it('off to on: reloads from the storage, without what ran while it was off', async () => {
+      const enabled = signal(true);
+      const storage = memory();
+      const service = setup({ recent: { storage, enabled } });
+      service.register([alpha, beta]);
+      await service.execute(service.commands()[0]);
+      enabled.set(false);
+      await service.execute(service.commands()[1]);
+      enabled.set(true);
+      expect(labels(service)[0]).toEqual(['Recent', ['Alpha']]);
+    });
+
+    it('survives several changes in a row, also with the palette open', async () => {
+      const enabled = signal(true);
+      const service = setup({ recent: { storage: memory(), enabled } });
+      service.register([alpha, beta]);
+      await service.execute(service.commands()[0]);
+      service.open();
+      for (const value of [false, true, false, false, true]) {
+        enabled.set(value);
+        expect(service.isOpen()).toBe(true);
+        expect(labels(service)[0][0]).toBe(value ? 'Recent' : 'Commands');
+      }
+      enabled.set(false);
+      enabled.set(true);
+      expect(labels(service)[0]).toEqual(['Recent', ['Alpha']]);
+    });
+
+    it('accepts a plain boolean and a function', async () => {
+      for (const enabled of [false, () => false, true, () => true]) {
+        TestBed.resetTestingModule();
+        const on = typeof enabled === 'function' ? enabled() : enabled;
+        const service = setup({ recent: { storage: memory(), enabled } });
+        service.register([alpha]);
+        await service.execute(service.commands()[0]);
+        expect(labels(service)[0][0]).toBe(on ? 'Recent' : 'Commands');
+      }
+    });
+
+    it('clearRecent() still empties the storage while it is off', async () => {
+      const enabled = signal(true);
+      const storage = memory();
+      const service = setup({ recent: { storage, enabled } });
+      service.register([alpha]);
+      await service.execute(service.commands()[0]);
+      enabled.set(false);
+      service.clearRecent();
+      expect(storage.data.has('rr-cp:recent')).toBe(false);
+    });
+
+    it('`recent: false` stays off for good', async () => {
+      const service = setup({ recent: false });
+      service.register([alpha]);
+      await service.execute(service.commands()[0]);
+      expect(labels(service)[0][0]).toBe('Commands');
+    });
+
+    it('does not fail when the storage throws', async () => {
+      const boom = () => {
+        throw new Error('blocked');
+      };
+      const enabled = signal(false);
+      const service = setup({
+        recent: { storage: { getItem: boom, setItem: boom, removeItem: boom }, enabled },
+      });
+      service.register([alpha]);
+      enabled.set(true);
+      await service.execute(service.commands()[0]);
+      // saving failed, the list stays in memory
+      expect(labels(service)[0]).toEqual(['Recent', ['Alpha']]);
+      // switching off and on reloads from the (unreadable) storage: empty, no error
+      enabled.set(false);
+      expect(labels(service)).toEqual([['Commands', ['Alpha']]]);
+      enabled.set(true);
+      expect(labels(service)).toEqual([['Commands', ['Alpha']]]);
+    });
+
+    it('works without any storage (SSR)', async () => {
+      const enabled = signal(true);
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), provideCommandPalette({ recent: { enabled } })],
+      });
+      vi.stubGlobal('localStorage', undefined);
+      try {
+        const service = TestBed.inject(CommandPaletteService);
+        service.register([alpha]);
+        await service.execute(service.commands()[0]);
+        enabled.set(false);
+        enabled.set(true);
+        expect(() => labels(service)).not.toThrow();
+      } finally {
+        vi.unstubAllGlobals();
+      }
     });
   });
 });

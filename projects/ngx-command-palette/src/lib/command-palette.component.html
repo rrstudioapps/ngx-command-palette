@@ -5,7 +5,7 @@
       class="rr-cp-dialog"
       role="dialog"
       aria-modal="true"
-      [attr.aria-label]="labels.dialog"
+      [attr.aria-label]="labels().dialog"
       (keydown)="onKeydown($event)"
     >
       @if (crumbs(); as path) {
@@ -14,7 +14,7 @@
             <button
               type="button"
               class="rr-cp-path-back"
-              [attr.aria-label]="labels.back"
+              [attr.aria-label]="labels().back"
               (click)="onBack(1)"
             >
               <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -79,14 +79,14 @@
         @if (service.loading()) {
           <span class="rr-cp-spinner" aria-hidden="true"></span>
         }
-        <kbd class="rr-cp-esc" aria-hidden="true">{{ labels.closeHint }}</kbd>
+        <kbd class="rr-cp-esc" aria-hidden="true">{{ labels().closeHint }}</kbd>
       </div>
 
       <div
         class="rr-cp-list"
         role="listbox"
         [id]="uid + '-listbox'"
-        [attr.aria-label]="labels.listbox"
+        [attr.aria-label]="labels().listbox"
         [attr.aria-busy]="service.loading()"
       >
         @for (group of view(); track group.section.id) {
@@ -137,7 +137,7 @@
                     }
                   </span>
                   @if (hasChildren(row.item.command)) {
-                    <span class="rr-cp-sr-only">, {{ labels.submenu }}</span>
+                    <span class="rr-cp-sr-only">, {{ labels().submenu }}</span>
                     <span class="rr-cp-chevron" aria-hidden="true">›</span>
                   }
                   @if (keysOf(row.item.command).length) {
@@ -157,14 +157,14 @@
       @if (items().length === 0) {
         <div class="rr-cp-empty">
           @if (service.loading()) {
-            {{ labels.loading }}
+            {{ labels().loading }}
           } @else if (emptyTemplate(); as custom) {
             <ng-container
               [ngTemplateOutlet]="custom.template"
               [ngTemplateOutletContext]="{ $implicit: service.query() }"
             />
           } @else {
-            {{ labels.empty }}
+            {{ labels().empty }}
           }
         </div>
       }

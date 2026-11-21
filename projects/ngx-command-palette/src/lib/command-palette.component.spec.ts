@@ -584,4 +584,79 @@ describe('CommandPaletteComponent', () => {
       expect(service.isOpen()).toBe(true);
     });
   });
+
+  describe('dynamic labels', () => {
+    const lang = signal<'en' | 'it'>('en');
+    async function create() {
+      lang.set('en');
+      localStorage.clear();
+      TestBed.configureTestingModule({
+        providers: [
+          provideRouter([]),
+          provideCommandPalette({
+            labels: () =>
+              lang() === 'it'
+                ? {
+                    placeholder: 'Cerca…',
+                    dialog: 'Palette comandi',
+                    listbox: 'Risultati',
+                    empty: 'Nessun risultato',
+                    results: '{count} risultati',
+                    recent: 'Recenti',
+                    closeHint: 'Esc IT',
+                  }
+                : {},
+          }),
+        ],
+      });
+      service = TestBed.inject(CommandPaletteService);
+      service.register([
+        { id: 'a', label: 'Alpha', run: () => undefined },
+        { id: 'b', label: 'Beta', run: () => undefined },
+      ]);
+      fixture = TestBed.createComponent(Host);
+      await fixture.whenStable();
+    }
+    const status = () => q('[aria-live]')!.textContent!.trim();
+
+    it('updates an open palette: placeholder, aria labels, status and hints', async () => {
+      await create();
+      await open();
+      expect(input().placeholder).toBe('Type a command or search…');
+      expect(status()).toBe('2 results');
+      lang.set('it');
+      await fixture.whenStable();
+      expect(input().placeholder).toBe('Cerca…');
+      expect(q('[role="dialog"]')!.getAttribute('aria-label')).toBe('Palette comandi');
+      expect(q('[role="listbox"]')!.getAttribute('aria-label')).toBe('Risultati');
+      expect(q('.rr-cp-esc')!.textContent).toBe('Esc IT');
+      expect(status()).toBe('2 risultati');
+      input().value = 'zzz';
+      input().dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      expect(status()).toBe('Nessun risultato');
+    });
+
+    it('applies a change made while closed the next time it opens, and back again', async () => {
+      await create();
+      lang.set('it');
+      await open();
+      expect(input().placeholder).toBe('Cerca…');
+      service.close();
+      lang.set('en');
+      await open();
+      expect(input().placeholder).toBe('Type a command or search…');
+      expect(status()).toBe('2 results');
+    });
+
+    it('translates the Recent heading of an open palette', async () => {
+      await create();
+      await service.execute(service.commands()[0]);
+      await open();
+      expect(q('.rr-cp-group-label')!.textContent).toBe('Recent');
+      lang.set('it');
+      await fixture.whenStable();
+      expect(q('.rr-cp-group-label')!.textContent).toBe('Recenti');
+    });
+  });
 });

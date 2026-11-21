@@ -10,6 +10,7 @@ import {
   computed,
   inject,
   isSignal,
+  linkedSignal,
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
@@ -25,6 +26,7 @@ import type {
 } from './command.model';
 import {
   COMMAND_PALETTE_CONFIG,
+  currentLabels,
   type CommandPaletteRecentOptions,
   type CommandPrefix,
 } from './config';
@@ -62,6 +64,9 @@ export class CommandPaletteService {
   private readonly router = inject(Router, { optional: true });
   private readonly document = inject(DOCUMENT);
 
+  /** The texts in use (see the `labels` option); follows a function or signal given there. */
+  readonly labels = computed(() => currentLabels(this.config));
+
   private readonly recentStore = this.config.recent
     ? new RecentStore(
         (this.config.recent as CommandPaletteRecentOptions).storageKey ?? 'rr-cp:recent',
@@ -76,7 +81,17 @@ export class CommandPaletteService {
   private readonly registrations = signal<readonly Registration[]>([]);
   private readonly providers = signal<readonly CommandProvider[]>([]);
   private readonly providerState = signal<ReadonlyMap<string, ProviderState>>(new Map());
-  private readonly recents = signal<readonly RecentEntry[]>(this.recentStore?.load() ?? []);
+  /** Recents on: not `recent: false` and `recent.enabled` (boolean, function or signal) not false. */
+  private readonly recentsOn = computed(() => {
+    if (!this.recentStore) return false;
+    const enabled = (this.config.recent as CommandPaletteRecentOptions).enabled ?? true;
+    return typeof enabled === 'function' ? enabled() : enabled;
+  });
+  // Reloaded from the storage whenever the recents are switched on, emptied when switched off
+  private readonly recents = linkedSignal<boolean, readonly RecentEntry[]>({
+    source: this.recentsOn,
+    computation: (on) => (on ? (this.recentStore?.load() ?? []) : []),
+  });
   private readonly pending = new Map<string, PendingRequest>();
   private readonly pathIds = signal<readonly string[]>([]);
   private readonly promptCommand = signal<ActionCommand | null>(null);
@@ -281,7 +296,8 @@ export class CommandPaletteService {
       query = value = this._query().trim();
       if (!value) return;
     }
-    if (this.recentStore) this.recents.set(this.recentStore.add(command, this.recents()));
+    if (this.recentStore && this.recentsOn())
+      this.recents.set(this.recentStore.add(command, this.recents()));
     this.close();
     if (command.route !== undefined) {
       if (!this.router) throw new Error('ngx-command-palette: route commands need provideRouter()');
@@ -320,7 +336,7 @@ export class CommandPaletteService {
   }
 
   private buildSections(rawQuery: string): CommandSection[] {
-    const defaultGroup = this.config.labels.defaultGroup;
+    const defaultGroup = this.labels().defaultGroup;
     const prompt = this.promptCommand();
     if (prompt) {
       const items = [toResult(prompt, `x:${prompt.id}`, 0, [])];
@@ -347,14 +363,14 @@ export class CommandPaletteService {
             .filter((c) => !isHidden(c) && isPinned(c))
             .map((c) => toResult(c, `pin:${c.id}`, 0, []));
       if (pinned.length)
-        sections.push({ id: PINNED_SECTION_ID, label: this.config.labels.pinned, items: pinned });
+        sections.push({ id: PINNED_SECTION_ID, label: this.labels().pinned, items: pinned });
       const pinnedIds = new Set(pinned.map((r) => r.command.id));
       const recent =
         topLevel && !prefix
           ? this.recentResults(commands).filter((r) => !pinnedIds.has(r.command.id))
           : [];
       if (recent.length)
-        sections.push({ id: RECENT_SECTION_ID, label: this.config.labels.recent, items: recent });
+        sections.push({ id: RECENT_SECTION_ID, label: this.labels().recent, items: recent });
       let listed = 0;
       for (const command of commands) {
         if (isHidden(command)) continue;
@@ -403,7 +419,7 @@ export class CommandPaletteService {
   }
 
   private recentResults(commands: readonly Command[]): CommandResult[] {
-    if (!this.recentStore) return [];
+    if (!this.recentStore || !this.recentsOn()) return [];
     const byId = new Map(descendants(commands).map((c) => [c.id, c]));
     const results: CommandResult[] = [];
     for (const entry of this.recents()) {

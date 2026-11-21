@@ -67,6 +67,13 @@ export interface CommandPaletteRecentOptions {
    * Errors thrown by it are swallowed: recents just stay in memory.
    */
   readonly storage?: RecentStorage | null;
+  /**
+   * Turns the recents on or off at runtime (boolean, function or signal; default `true`). While off the
+   * section is hidden, the list in memory is empty and executions are neither recorded nor saved. What
+   * is already in the storage is kept (use `clearRecent()` to remove it); turning it on again reloads it.
+   * `recent: false` disables the feature for good.
+   */
+  readonly enabled?: boolean | (() => boolean);
 }
 
 /** Minimal synchronous storage for recent commands. `localStorage` and `sessionStorage` fit. */
@@ -104,11 +111,17 @@ export interface CommandPaletteConfig {
   readonly filter: CommandFilter;
   /** Search modes triggered by a leading character, e.g. `[{ prefix: '>', kind: 'action' }]`. Default: none. */
   readonly prefixes: readonly CommandPrefix[];
+  /** The static texts (the defaults plus the `labels` object given, if any). */
   readonly labels: CommandPaletteLabels;
+  /**
+   * Set when `labels` was given as a function or a signal: read reactively on top of `labels`, so
+   * signals read inside it (e.g. the current language) update the open palette.
+   */
+  readonly labelsSource?: () => Partial<CommandPaletteLabels>;
 }
 
 export type CommandPaletteOptions = Partial<Omit<CommandPaletteConfig, 'labels'>> & {
-  readonly labels?: Partial<CommandPaletteLabels>;
+  readonly labels?: Partial<CommandPaletteLabels> | (() => Partial<CommandPaletteLabels>);
 };
 
 export const DEFAULT_COMMAND_PALETTE_LABELS: CommandPaletteLabels = {
@@ -162,8 +175,17 @@ export function resolveConfig(options: CommandPaletteOptions = {}): CommandPalet
             ...(DEFAULT_COMMAND_PALETTE_CONFIG.recent as CommandPaletteRecentOptions),
             ...options.recent,
           },
-    labels: { ...DEFAULT_COMMAND_PALETTE_LABELS, ...options.labels },
+    labels: {
+      ...DEFAULT_COMMAND_PALETTE_LABELS,
+      ...(typeof options.labels === 'function' ? undefined : options.labels),
+    },
+    ...(typeof options.labels === 'function' ? { labelsSource: options.labels } : {}),
   };
+}
+
+/** The labels in use: the static ones plus whatever a `labels` function returns right now. */
+export function currentLabels(config: CommandPaletteConfig): CommandPaletteLabels {
+  return config.labelsSource ? { ...config.labels, ...config.labelsSource() } : config.labels;
 }
 
 /** Configures the command palette. Optional: without it the defaults are used. */
