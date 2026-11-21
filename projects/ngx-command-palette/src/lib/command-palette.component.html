@@ -79,7 +79,9 @@
         @if (service.loading()) {
           <span class="rr-cp-spinner" aria-hidden="true"></span>
         }
-        <kbd class="rr-cp-esc" aria-hidden="true">{{ labels().closeHint }}</kbd>
+        @if (config.showCloseHint) {
+          <kbd class="rr-cp-esc" aria-hidden="true">{{ labels().closeHint }}</kbd>
+        }
       </div>
 
       <div
@@ -92,7 +94,7 @@
         @for (group of view(); track group.section.id) {
           <div class="rr-cp-group" role="group" [attr.aria-labelledby]="group.headingId">
             <!-- prettier-ignore -->
-            <div class="rr-cp-group-label" [id]="group.headingId" aria-hidden="true">{{ group.section.label }}</div>
+            <div class="rr-cp-group-label" [class.rr-cp-sr-only]="!config.showSectionLabels" [id]="group.headingId" aria-hidden="true">{{ group.section.label }}</div>
             @for (row of group.rows; track row.item.key) {
               <!-- Combobox pattern: options never get focus, the keyboard goes through the input (aria-activedescendant) -->
               <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
@@ -131,7 +133,7 @@
                   <span class="rr-cp-text">
                     <!-- Single line: line breaks would become spaces inside the label -->
                     <!-- prettier-ignore -->
-                    <span class="rr-cp-label">@for (segment of row.item.segments; track $index) {@if (segment.match) {<mark class="rr-cp-match">{{ segment.text }}</mark>} @else {{{ segment.text }}}}</span>
+                    <span class="rr-cp-label">@for (segment of row.item.segments; track $index) {@if (segment.match && config.highlightMatches) {<mark class="rr-cp-match">{{ segment.text }}</mark>} @else {{{ segment.text }}}}</span>
                     @if (row.item.command.description) {
                       <span class="rr-cp-description">{{ row.item.command.description }}</span>
                     }
@@ -169,7 +171,8 @@
         </div>
       }
 
-      <div class="rr-cp-sr-only" aria-live="polite" aria-atomic="true">{{ status() }}</div>
+      <!-- prettier-ignore -->
+      <div [class.rr-cp-status]="config.showStatus" [class.rr-cp-sr-only]="!config.showStatus" aria-live="polite" aria-atomic="true">{{ status() }}</div>
     </div>
   </div>
 }

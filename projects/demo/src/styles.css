@@ -37,13 +37,22 @@
   --rr-cp-kbd-bg: #1c2230;
 }
 
+/* Compact density with the spacing variables: they also work set on :root (here html.compact) */
+html.compact {
+  --rr-cp-input-height: 44px;
+  --rr-cp-input-font-size: 0.9375rem;
+  --rr-cp-list-padding: 4px;
+  --rr-cp-item-padding: 3px 10px;
+  --rr-cp-item-gap: 8px;
+  --rr-cp-description-size: 0.75rem;
+}
+
 html.compact .rr-cp {
   --rr-cp-font-size: 0.875rem;
 }
 
 html.compact .rr-cp-item {
   min-height: 32px;
-  padding-block: 3px;
 }
 
 * {

@@ -2,6 +2,15 @@
 /* © 2026 rrstudio — ngx-command-palette */
 
 /*
+ * Spacing, sizing and weight variables (--rr-cp-search-padding, --rr-cp-search-gap, --rr-cp-input-height,
+ * --rr-cp-input-font-size, --rr-cp-input-focus-outline, --rr-cp-list-padding, --rr-cp-item-padding,
+ * --rr-cp-item-gap, --rr-cp-label-weight, --rr-cp-match-weight, --rr-cp-description-size,
+ * --rr-cp-description-color, --rr-cp-description-opacity, --rr-cp-item-active-fg,
+ * --rr-cp-item-active-shadow, --rr-cp-status-padding, --rr-cp-status-size) have their default as a
+ * `var()` fallback in the rules below, not here: that way they also work when set on :root or body.
+ */
+
+/*
  * Defaults with zero specificity (:where), so any app rule
  * (e.g. `.rr-cp { --rr-cp-accent: … }`) overrides them without !important.
  */
@@ -86,8 +95,8 @@
 .rr-cp-search {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 14px;
+  gap: var(--rr-cp-search-gap, 10px);
+  padding: var(--rr-cp-search-padding, 0 14px);
   border-bottom: 1px solid var(--rr-cp-border);
 }
 
@@ -139,17 +148,29 @@
   color: var(--rr-cp-muted);
 }
 
-.rr-cp-input {
+/*
+ * `.rr-cp .rr-cp-input` (two classes) wins over app rules such as `input[type='text'] { … }`, so the
+ * field keeps its own look. The focus ring is off by default; `--rr-cp-input-focus-outline` turns it on.
+ */
+.rr-cp .rr-cp-input {
   flex: 1;
   min-width: 0;
-  height: 52px;
+  height: var(--rr-cp-input-height, 52px);
+  margin: 0;
   padding: 0;
   border: 0;
+  border-radius: 0;
   outline: 0;
   background: transparent;
+  box-shadow: none;
+  appearance: none;
   color: inherit;
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--rr-cp-input-font-size, 1rem);
+}
+
+.rr-cp .rr-cp-input:focus-visible {
+  outline: var(--rr-cp-input-focus-outline, none);
 }
 
 .rr-cp-input::placeholder {
@@ -161,8 +182,8 @@
   max-height: var(--rr-cp-max-height);
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 6px;
-  scroll-padding: 6px;
+  padding: var(--rr-cp-list-padding, 6px);
+  scroll-padding: var(--rr-cp-list-padding, 6px);
 }
 
 .rr-cp-list:empty {
@@ -184,9 +205,9 @@
 .rr-cp-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--rr-cp-item-gap, 10px);
   min-height: 40px;
-  padding: 6px 10px;
+  padding: var(--rr-cp-item-padding, 6px 10px);
   border-radius: var(--rr-cp-item-radius);
   cursor: pointer;
   user-select: none;
@@ -194,7 +215,8 @@
 
 .rr-cp-item-active {
   background: var(--rr-cp-item-active-bg);
-  box-shadow: inset 2px 0 0 var(--rr-cp-accent);
+  color: var(--rr-cp-item-active-fg, var(--rr-cp-fg));
+  box-shadow: var(--rr-cp-item-active-shadow, inset 2px 0 0 var(--rr-cp-accent));
 }
 
 .rr-cp-item[aria-disabled='true'] {
@@ -230,9 +252,14 @@
   white-space: nowrap;
 }
 
+.rr-cp-label {
+  font-weight: var(--rr-cp-label-weight, inherit);
+}
+
 .rr-cp-description {
-  color: var(--rr-cp-muted);
-  font-size: 0.8125rem;
+  color: var(--rr-cp-description-color, var(--rr-cp-muted));
+  font-size: var(--rr-cp-description-size, 0.8125rem);
+  opacity: var(--rr-cp-description-opacity, 1);
 }
 
 .rr-cp-match {
@@ -240,7 +267,7 @@
   padding: 0;
   background: var(--rr-cp-highlight-bg);
   color: var(--rr-cp-highlight);
-  font-weight: 600;
+  font-weight: var(--rr-cp-match-weight, 600);
 }
 
 .rr-cp-shortcut {
@@ -264,6 +291,13 @@
   font-family: inherit;
   font-size: 0.6875rem;
   font-weight: 500;
+}
+
+.rr-cp-status {
+  padding: var(--rr-cp-status-padding, 8px 14px);
+  border-top: 1px solid var(--rr-cp-border);
+  color: var(--rr-cp-muted);
+  font-size: var(--rr-cp-status-size, 0.75rem);
 }
 
 .rr-cp-empty {

@@ -659,4 +659,127 @@ describe('CommandPaletteComponent', () => {
       expect(q('.rr-cp-group-label')!.textContent).toBe('Recenti');
     });
   });
+
+  describe('display options', () => {
+    async function create(
+      options: Parameters<typeof provideCommandPalette>[0],
+      commands: Parameters<CommandPaletteService['register']>[0] = [
+        { id: 'a', label: 'Alpha', group: 'One', run: () => undefined },
+        { id: 'b', label: 'Beta', group: 'Two', run: () => undefined },
+      ],
+    ) {
+      localStorage.clear();
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), provideCommandPalette({ recent: false, ...options })],
+      });
+      service = TestBed.inject(CommandPaletteService);
+      service.register(commands);
+      fixture = TestBed.createComponent(Host);
+      await fixture.whenStable();
+      await open();
+    }
+    const status = () => q('[aria-live]')!;
+    const heading = () => q('.rr-cp-group-label')!;
+    const hidden = (el: HTMLElement) => el.classList.contains('rr-cp-sr-only');
+
+    it('has the current look by default', async () => {
+      await create({});
+      expect(q('.rr-cp-esc')).not.toBeNull();
+      expect(hidden(heading())).toBe(false);
+      expect(hidden(status())).toBe(true);
+      expect(status().classList.contains('rr-cp-status')).toBe(false);
+    });
+
+    it('showSectionLabels: false hides the headings visually, groups keep their name', async () => {
+      await create({ showSectionLabels: false });
+      expect(hidden(heading())).toBe(true);
+      const group = q('[role="group"]')!;
+      const labelledBy = group.getAttribute('aria-labelledby')!;
+      expect(document.getElementById(labelledBy)!.textContent).toBe('One');
+    });
+
+    it('showCloseHint: false removes the Esc key', async () => {
+      await create({ showCloseHint: false });
+      expect(q('.rr-cp-esc')).toBeNull();
+    });
+
+    it('highlightMatches: false renders no <mark>, the text stays whole', async () => {
+      await create({ highlightMatches: false });
+      input().value = 'alp';
+      input().dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      expect(document.querySelectorAll('.rr-cp-match').length).toBe(0);
+      expect(q('.rr-cp-label')!.textContent).toBe('Alpha');
+    });
+
+    it('highlights by default', async () => {
+      await create({});
+      input().value = 'alp';
+      input().dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      expect(document.querySelectorAll('.rr-cp-match').length).toBeGreaterThan(0);
+    });
+
+    it('showStatus: true shows the status line and keeps it aria-live', async () => {
+      await create({ showStatus: true });
+      const el = status();
+      expect(el.classList.contains('rr-cp-status')).toBe(true);
+      expect(hidden(el)).toBe(false);
+      expect(el.getAttribute('aria-live')).toBe('polite');
+      expect(el.textContent!.trim()).toBe('2 results');
+    });
+
+    it('resultsOne is used for a single result, results otherwise', async () => {
+      await create({ labels: { results: '{count} items', resultsOne: 'one item' } });
+      expect(status().textContent!.trim()).toBe('2 items');
+      input().value = 'alp';
+      input().dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      expect(status().textContent!.trim()).toBe('one item');
+    });
+
+    it('resultsOne replaces {count}, and without it results is used', async () => {
+      await create({ labels: { resultsOne: '{count} result' } });
+      input().value = 'alp';
+      input().dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      expect(status().textContent!.trim()).toBe('1 result');
+    });
+
+    it('without resultsOne a single result uses results', async () => {
+      await create({});
+      input().value = 'alp';
+      input().dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      expect(status().textContent!.trim()).toBe('1 results');
+    });
+
+    it('levelOne is used inside a sub-palette with a single result', async () => {
+      await create(
+        { labels: { levelOne: '{name}: only {count}', level: '{name}: {count} many' } },
+        [
+          {
+            id: 'p',
+            label: 'Theme',
+            children: [{ id: 'c', label: 'Dark', run: () => undefined }],
+          },
+          {
+            id: 'q',
+            label: 'Colors',
+            children: [
+              { id: 'r', label: 'Red', run: () => undefined },
+              { id: 's', label: 'Blue', run: () => undefined },
+            ],
+          },
+        ],
+      );
+      await service.execute(service.commands()[0]);
+      await fixture.whenStable();
+      expect(status().textContent!.trim()).toBe('Theme: only 1');
+      service.back();
+      await service.execute(service.commands()[1]);
+      await fixture.whenStable();
+      expect(status().textContent!.trim()).toBe('Colors: 2 many');
+    });
+  });
 });

@@ -189,6 +189,77 @@ try {
     await page.context().close();
   });
 
+  const activeStyles = (page) =>
+    page.evaluate(() => {
+      const active = document.querySelector('.rr-cp-item-active');
+      const field = getComputedStyle(document.querySelector('.rr-cp-input'));
+      const item = getComputedStyle(active);
+      return {
+        activeFg: item.color,
+        itemPadding: item.padding,
+        itemGap: item.columnGap,
+        shadow: item.boxShadow === 'none' ? 'none' : 'bar',
+        labelWeight: getComputedStyle(active.querySelector('.rr-cp-label')).fontWeight,
+        inputHeight: field.height,
+        inputBorder: field.borderTopWidth,
+        inputBg: field.backgroundColor,
+        inputShadow: field.boxShadow,
+        inputRadius: field.borderTopLeftRadius,
+      };
+    });
+  async function styledPage(css) {
+    const page = await newPage();
+    if (css) await page.addStyleTag({ content: css });
+    await openPalette(page);
+    await page.keyboard.type('set');
+    await until(() => firstOption(page), 'Settings', 'search result');
+    return page;
+  }
+
+  await check("spacing and weight variables keep today's look by default", async () => {
+    const page = await styledPage('');
+    const got = await activeStyles(page);
+    equal(
+      [got.itemPadding, got.itemGap, got.shadow, got.labelWeight, got.inputHeight],
+      ['6px 10px', '10px', 'bar', '400', '52px'],
+      'defaults',
+    );
+    await page.context().close();
+  });
+
+  await check('the new variables also work when set on :root', async () => {
+    const page = await styledPage(
+      ':root{--rr-cp-item-active-fg:rgb(255,0,0);--rr-cp-item-active-shadow:none;--rr-cp-item-padding:2px 4px;--rr-cp-item-gap:3px;--rr-cp-label-weight:700;--rr-cp-input-height:40px}',
+    );
+    const got = await activeStyles(page);
+    equal(
+      [got.activeFg, got.shadow, got.itemPadding, got.itemGap, got.labelWeight, got.inputHeight],
+      ['rgb(255, 0, 0)', 'none', '2px 4px', '3px', '700', '40px'],
+      'custom values',
+    );
+    await page.context().close();
+  });
+
+  await check('the search field ignores global input rules', async () => {
+    const reference = await activeStyles(await styledPage(''));
+    const page = await styledPage(
+      "input,input[type='text'],.app input{border:1px solid red;background:yellow;box-shadow:0 0 0 3px blue;border-radius:9px;height:80px}",
+    );
+    const got = await activeStyles(page);
+    equal(
+      [got.inputBorder, got.inputBg, got.inputShadow, got.inputRadius, got.inputHeight],
+      [
+        reference.inputBorder,
+        reference.inputBg,
+        reference.inputShadow,
+        reference.inputRadius,
+        reference.inputHeight,
+      ],
+      'search field',
+    );
+    await page.context().close();
+  });
+
   for (const scheme of ['light', 'dark']) {
     await check(`axe: no violations (${scheme}: empty, search, sub-palette, prompt)`, async () => {
       const page = await newPage(scheme);

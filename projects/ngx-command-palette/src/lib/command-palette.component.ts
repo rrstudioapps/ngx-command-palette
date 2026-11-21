@@ -125,7 +125,14 @@ export class CommandPaletteComponent {
     const path = this.service.path();
     const prompt = this.service.prompt();
     if (prompt) return this.labels().prompt.replace('{name}', prompt.label);
-    const template = path.length ? this.labels().level : this.labels().results;
+    const { level, levelOne, results, resultsOne } = this.labels();
+    const template = path.length
+      ? count === 1
+        ? (levelOne ?? level)
+        : level
+      : count === 1
+        ? (resultsOne ?? results)
+        : results;
     return template
       .replace('{name}', path[path.length - 1]?.label ?? '')
       .replace('{count}', String(count));

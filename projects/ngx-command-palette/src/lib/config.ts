@@ -22,11 +22,15 @@ export interface CommandPaletteLabels {
   readonly defaultGroup: string;
   /** Screen reader announcement, `{count}` is replaced by the number of results. */
   readonly results: string;
+  /** Same as `results` for exactly one result. Default: `results` is used. */
+  readonly resultsOne?: string;
   readonly closeHint: string;
   /** Label of the button that goes back one level of a sub-palette. */
   readonly back: string;
   /** Screen reader announcement when a sub-palette is opened; `{name}` and `{count}` are replaced. */
   readonly level: string;
+  /** Same as `level` for exactly one result. Default: `level` is used. */
+  readonly levelOne?: string;
   /** Screen reader hint added to a command that opens a sub-palette. */
   readonly submenu: string;
 }
@@ -111,6 +115,20 @@ export interface CommandPaletteConfig {
   readonly filter: CommandFilter;
   /** Search modes triggered by a leading character, e.g. `[{ prefix: '>', kind: 'action' }]`. Default: none. */
   readonly prefixes: readonly CommandPrefix[];
+  /**
+   * Shows the section headings (Recent, Pinned, groups). With `false` they are visually hidden but the
+   * groups keep their accessible name. Default: `true`.
+   */
+  readonly showSectionLabels: boolean;
+  /** Shows the close key hint (`labels.closeHint`, Esc) in the search field. Default: `true`. */
+  readonly showCloseHint: boolean;
+  /** Highlights the characters matched by the search. Default: `true`. */
+  readonly highlightMatches: boolean;
+  /**
+   * Shows the status line (e.g. "3 results", by default only for screen readers) at the bottom of the
+   * window, with the class `rr-cp-status`. It stays an `aria-live` region either way. Default: `false`.
+   */
+  readonly showStatus: boolean;
   /** The static texts (the defaults plus the `labels` object given, if any). */
   readonly labels: CommandPaletteLabels;
   /**
@@ -152,6 +170,10 @@ export const DEFAULT_COMMAND_PALETTE_CONFIG: CommandPaletteConfig = {
   maxEmptyResults: 100,
   filter: matchCommand,
   prefixes: [],
+  showSectionLabels: true,
+  showCloseHint: true,
+  highlightMatches: true,
+  showStatus: false,
   labels: DEFAULT_COMMAND_PALETTE_LABELS,
 };
 
