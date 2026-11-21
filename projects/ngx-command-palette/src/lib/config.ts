@@ -59,13 +59,33 @@ export interface CommandPaletteRecentOptions {
    * when the list is full.
    */
   readonly rank?: 'recent' | 'frequent';
-  /** localStorage key. Default: `rr-cp:recent`. */
+  /** Storage key. Default: `rr-cp:recent`. */
   readonly storageKey?: string;
+  /**
+   * Where recents are saved. Default: `localStorage` (none during SSR or when it is blocked). Pass
+   * `sessionStorage` or any object with the same three synchronous methods, e.g. an in-memory one.
+   * Errors thrown by it are swallowed: recents just stay in memory.
+   */
+  readonly storage?: RecentStorage | null;
 }
+
+/** Minimal synchronous storage for recent commands. `localStorage` and `sessionStorage` fit. */
+export type RecentStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 export interface CommandPaletteConfig {
   /** Shortcut(s) that toggle the palette. Default: `mod+k` (⌘K on macOS, Ctrl+K elsewhere). */
   readonly shortcut: string | readonly string[];
+  /**
+   * Whether shortcuts that use Ctrl/⌘ still fire while typing in an input, textarea, select or
+   * contenteditable (this also applies to command `hotkey`s). Default: `true`.
+   */
+  readonly shortcutInFields: boolean;
+  /**
+   * Turns the shortcut off while `false`: it no longer opens the palette (an open palette can still be
+   * closed with it), but `open()` keeps working. A function or a signal is read on every key press.
+   * Default: `true`.
+   */
+  readonly shortcutEnabled: boolean | (() => boolean);
   /** `auto` follows `prefers-color-scheme`. Default: `auto`. */
   readonly theme: CommandPaletteTheme;
   /** "Recent" section shown with an empty query; `false` disables it. */
@@ -110,6 +130,8 @@ export const DEFAULT_COMMAND_PALETTE_LABELS: CommandPaletteLabels = {
 
 export const DEFAULT_COMMAND_PALETTE_CONFIG: CommandPaletteConfig = {
   shortcut: 'mod+k',
+  shortcutInFields: true,
+  shortcutEnabled: true,
   theme: 'auto',
   recent: { max: 5, storageKey: 'rr-cp:recent' },
   debounceMs: 200,

@@ -66,7 +66,7 @@ export class CommandPaletteService {
     ? new RecentStore(
         (this.config.recent as CommandPaletteRecentOptions).storageKey ?? 'rr-cp:recent',
         (this.config.recent as CommandPaletteRecentOptions).max ?? 5,
-        undefined,
+        (this.config.recent as CommandPaletteRecentOptions).storage,
         (this.config.recent as CommandPaletteRecentOptions).rank,
       )
     : null;

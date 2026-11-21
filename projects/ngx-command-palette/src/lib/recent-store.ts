@@ -2,6 +2,7 @@
 // © 2026 rrstudio — ngx-command-palette
 
 import type { Command } from './command.model';
+import type { RecentStorage } from './config';
 
 /** What is saved for a recent command: only serializable fields, never functions. */
 export interface RecentEntry {
@@ -17,17 +18,14 @@ export interface RecentEntry {
 }
 
 /**
- * Recent commands in `localStorage` (most recent first). Every access is guarded:
+ * Recent commands in `localStorage` or a custom storage (most recent first). Every access is guarded:
  * private windows, SSR or blocked storage just mean "no recents".
  */
 export class RecentStore {
   constructor(
     private readonly storageKey: string,
     private readonly max: number,
-    private readonly storage: Pick<
-      Storage,
-      'getItem' | 'setItem' | 'removeItem'
-    > | null = defaultStorage(),
+    private readonly storage: RecentStorage | null = defaultStorage(),
     private readonly rank: 'recent' | 'frequent' = 'recent',
   ) {}
 

@@ -29,6 +29,7 @@ export {
   type CommandPaletteOptions,
   type CommandPaletteRecentOptions,
   type CommandPaletteTheme,
+  type RecentStorage,
 } from './lib/config';
 export {
   CommandPaletteService,

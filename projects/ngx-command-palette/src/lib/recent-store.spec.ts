@@ -153,4 +153,41 @@ describe('RecentStore', () => {
       expect(store.add(cmd('a'), [])[0]).toEqual({ id: 'a', label: 'A', route: '/a' });
     });
   });
+
+  describe('default storage', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('is none during SSR (no localStorage)', () => {
+      vi.stubGlobal('localStorage', undefined);
+      const store = new RecentStore('k', 5);
+      expect(store.load()).toEqual([]);
+      expect(store.add({ id: 'a', label: 'A', route: '/' }, [])).toHaveLength(1);
+      expect(() => store.clear()).not.toThrow();
+    });
+
+    it('is none when reading localStorage throws', () => {
+      vi.stubGlobal('localStorage', undefined);
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        get: () => {
+          throw new DOMException('denied', 'SecurityError');
+        },
+      });
+      const store = new RecentStore('k', 5);
+      expect(store.load()).toEqual([]);
+      expect(store.add({ id: 'a', label: 'A', route: '/' }, [])).toHaveLength(1);
+    });
+  });
+
+  it('uses a storage that throws only on write', () => {
+    const storage = {
+      ...memoryStorage(),
+      setItem: () => {
+        throw new DOMException('full', 'QuotaExceededError');
+      },
+    };
+    const store = new RecentStore('k', 5, storage);
+    expect(store.add({ id: 'a', label: 'A', route: '/' }, [])).toHaveLength(1);
+    expect(store.load()).toEqual([]);
+  });
 });

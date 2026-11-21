@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 // © 2026 rrstudio — ngx-command-palette
 
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 
 import { CommandPaletteComponent } from './command-palette.component';
@@ -473,6 +474,114 @@ describe('CommandPaletteComponent', () => {
       await fixture.whenStable();
       expect(values).toEqual(['7']);
       expect(service.isOpen()).toBe(false);
+    });
+  });
+
+  describe('shortcut options', () => {
+    async function create(options: Parameters<typeof provideCommandPalette>[0]) {
+      localStorage.clear();
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), provideCommandPalette({ recent: false, ...options })],
+      });
+      service = TestBed.inject(CommandPaletteService);
+      fixture = TestBed.createComponent(Host);
+      await fixture.whenStable();
+    }
+    const field = (tag = 'input') => {
+      const el = document.createElement(tag);
+      document.body.appendChild(el);
+      return el;
+    };
+
+    it('`shortcut: []` turns the shortcut off, open() still works', async () => {
+      await create({ shortcut: [] });
+      keydown(document.body, 'k', { ctrlKey: true });
+      expect(service.isOpen()).toBe(false);
+      service.open();
+      expect(service.isOpen()).toBe(true);
+      const cp = fixture.debugElement.query(By.directive(CommandPaletteComponent));
+      expect(cp.componentInstance.shortcutLabel).toBe('');
+    });
+
+    it('shortcutInFields defaults to true: Ctrl+K opens from a field', async () => {
+      await create({});
+      const el = field();
+      keydown(el, 'k', { ctrlKey: true });
+      expect(service.isOpen()).toBe(true);
+      el.remove();
+    });
+
+    it.each(['input', 'textarea', 'select', 'div'])(
+      'shortcutInFields: false ignores Ctrl+K in <%s>',
+      async (tag) => {
+        await create({ shortcutInFields: false });
+        const el = field(tag);
+        if (tag === 'div') {
+          el.setAttribute('contenteditable', 'true');
+          // jsdom/happy-dom may not compute isContentEditable: define it
+          Object.defineProperty(el, 'isContentEditable', { value: true });
+        }
+        keydown(el, 'k', { ctrlKey: true });
+        expect(service.isOpen()).toBe(false);
+        keydown(document.body, 'k', { ctrlKey: true });
+        expect(service.isOpen()).toBe(true);
+        el.remove();
+      },
+    );
+
+    it('shortcutInFields: false also stops command hotkeys in a field, not outside', async () => {
+      await create({ shortcutInFields: false });
+      const hits: string[] = [];
+      service.register([{ id: 'a', label: 'A', hotkey: 'ctrl+s', run: () => void hits.push('a') }]);
+      const el = field();
+      keydown(el, 's', { ctrlKey: true });
+      expect(hits).toEqual([]);
+      keydown(document.body, 's', { ctrlKey: true });
+      expect(hits).toEqual(['a']);
+      el.remove();
+    });
+
+    it('shortcutInFields: false leaves Esc and typing in the palette input alone', async () => {
+      await create({ shortcutInFields: false });
+      service.open();
+      await fixture.whenStable();
+      keydown(input(), 'Escape');
+      expect(service.isOpen()).toBe(false);
+    });
+
+    it('shortcutEnabled: false does not open and does not swallow the key', async () => {
+      await create({ shortcutEnabled: false });
+      const event = keydown(document.body, 'k', { ctrlKey: true });
+      expect(service.isOpen()).toBe(false);
+      expect(event.defaultPrevented).toBe(false);
+      service.open();
+      expect(service.isOpen()).toBe(true);
+    });
+
+    it('shortcutEnabled follows a signal, also while the palette is open', async () => {
+      const enabled = signal(true);
+      await create({ shortcutEnabled: enabled });
+      keydown(document.body, 'k', { ctrlKey: true });
+      expect(service.isOpen()).toBe(true);
+      // switched off while open: it can still close, then it no longer opens
+      enabled.set(false);
+      keydown(document.body, 'k', { ctrlKey: true });
+      expect(service.isOpen()).toBe(false);
+      keydown(document.body, 'k', { ctrlKey: true });
+      expect(service.isOpen()).toBe(false);
+      enabled.set(true);
+      keydown(document.body, 'k', { ctrlKey: true });
+      expect(service.isOpen()).toBe(true);
+    });
+
+    it('shortcutEnabled accepts a plain function', async () => {
+      let on = false;
+      await create({ shortcutEnabled: () => on });
+      keydown(document.body, 'k', { ctrlKey: true });
+      expect(service.isOpen()).toBe(false);
+      on = true;
+      keydown(document.body, 'k', { ctrlKey: true });
+      expect(service.isOpen()).toBe(true);
     });
   });
 });

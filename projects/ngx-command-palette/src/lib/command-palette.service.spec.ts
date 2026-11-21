@@ -175,6 +175,65 @@ describe('CommandPaletteService', () => {
     expect(service.sections()).toEqual([]);
   });
 
+  describe('recent.storage', () => {
+    const memory = () => {
+      const data = new Map<string, string>();
+      return {
+        data,
+        getItem: (k: string) => data.get(k) ?? null,
+        setItem: (k: string, v: string) => void data.set(k, v),
+        removeItem: (k: string) => void data.delete(k),
+      };
+    };
+
+    it('saves recents in the given storage instead of localStorage', async () => {
+      const storage = memory();
+      const service = setup({ recent: { storage } });
+      service.register([{ id: 'a', label: 'Alpha', run: noop }]);
+      await service.execute(service.commands()[0]);
+      expect(JSON.parse(storage.data.get('rr-cp:recent')!)).toHaveLength(1);
+      expect(localStorage.getItem('rr-cp:recent')).toBeNull();
+    });
+
+    it('loads the recents already in the given storage', () => {
+      const storage = memory();
+      storage.data.set('rr-cp:recent', JSON.stringify([{ id: 'a', label: 'Alpha' }]));
+      const service = setup({ recent: { storage } });
+      service.register([{ id: 'a', label: 'Alpha', run: noop }]);
+      expect(labels(service)[0]).toEqual(['Recent', ['Alpha']]);
+    });
+
+    it('works with sessionStorage', async () => {
+      sessionStorage.clear();
+      const service = setup({ recent: { storage: sessionStorage } });
+      service.register([{ id: 'a', label: 'Alpha', run: noop }]);
+      await service.execute(service.commands()[0]);
+      expect(sessionStorage.getItem('rr-cp:recent')).not.toBeNull();
+      expect(localStorage.getItem('rr-cp:recent')).toBeNull();
+    });
+
+    it('keeps working when the storage throws', async () => {
+      const boom = () => {
+        throw new Error('blocked');
+      };
+      const service = setup({
+        recent: { storage: { getItem: boom, setItem: boom, removeItem: boom } },
+      });
+      service.register([{ id: 'a', label: 'Alpha', run: noop }]);
+      await service.execute(service.commands()[0]);
+      // recents stay in memory for this session
+      expect(labels(service)[0]).toEqual(['Recent', ['Alpha']]);
+      expect(() => service.clearRecent()).not.toThrow();
+    });
+
+    it('does not save anything with `storage: null`', async () => {
+      const service = setup({ recent: { storage: null } });
+      service.register([{ id: 'a', label: 'Alpha', run: noop }]);
+      await service.execute(service.commands()[0]);
+      expect(localStorage.getItem('rr-cp:recent')).toBeNull();
+    });
+  });
+
   it('can disable recents', async () => {
     const service = setup({ recent: false });
     service.register([{ id: 'a', label: 'Alpha', run: noop }]);

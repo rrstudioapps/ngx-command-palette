@@ -68,6 +68,10 @@ export class CommandPaletteComponent {
     ? [this.config.shortcut]
     : this.config.shortcut
   ).map(parseShortcut);
+  private shortcutEnabled(): boolean {
+    const enabled = this.config.shortcutEnabled;
+    return typeof enabled === 'function' ? enabled() : enabled;
+  }
   /** Label of the first shortcut, e.g. `⌘K` or `Ctrl+K`, for a "search" button in your UI. */
   readonly shortcutLabel = this.shortcuts.length
     ? formatShortcut(this.shortcuts[0], this.apple)
@@ -241,19 +245,23 @@ export class CommandPaletteComponent {
     if (event.repeat || event.isComposing) return;
     // Command hotkeys need a modifier. Alt alone is ignored in a text field: on macOS it types
     // special characters (Alt+T is "†"), so it must not be swallowed there. Ctrl and ⌘ never type.
+    const typing = isEditable(event.target);
+    const fieldsAllowed = this.config.shortcutInFields || !typing;
     const hotkeyAllowed =
-      event.ctrlKey || event.metaKey || (event.altKey && !isEditable(event.target));
+      fieldsAllowed && (event.ctrlKey || event.metaKey || (event.altKey && !typing));
     if (hotkeyAllowed && this.service.runHotkey(event, this.apple)) {
       event.preventDefault();
       return;
     }
-    // Shortcuts without Ctrl/⌘/Alt (e.g. "/") do not fire while typing in a field
-    const typing = isEditable(event.target);
+    // Shortcuts without Ctrl/⌘/Alt (e.g. "/") never fire while typing in a field; with
+    // `shortcutInFields: false` the ones with Ctrl/⌘ do not either
     const hit = this.shortcuts.some(
       (s) =>
-        (!typing || s.mod || s.ctrl || s.meta || s.alt) && matchesShortcut(event, s, this.apple),
+        (!typing || (this.config.shortcutInFields && (s.mod || s.ctrl || s.meta || s.alt))) &&
+        matchesShortcut(event, s, this.apple),
     );
-    if (hit) {
+    // `shortcutEnabled` only stops it from opening: an open palette can always be closed
+    if (hit && (this.service.isOpen() || this.shortcutEnabled())) {
       event.preventDefault();
       this.activeKey.set(null);
       this.service.toggle();
