@@ -2,7 +2,7 @@
 
 An accessible **⌘K / Ctrl+K command palette for Angular**. A modern equivalent of
 [cmdk](https://cmdk.paco.me) and [kbar](https://kbar.vercel.app), built the Angular way:
-standalone components, signals, zoneless-ready and **no dependencies besides Angular**.
+standalone components, signals, zoneless-ready and **no dependencies besides Angular** (and `tslib`, see below).
 
 [![CI](https://github.com/rrstudioapps/ngx-command-palette/actions/workflows/ci.yml/badge.svg)](https://github.com/rrstudioapps/ngx-command-palette/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@rrstudioapps/ngx-command-palette)](https://www.npmjs.com/package/@rrstudioapps/ngx-command-palette)
@@ -38,6 +38,8 @@ npm install @rrstudioapps/ngx-command-palette
 ```
 
 Requires Angular 22 (`@angular/core`, `@angular/common`, `@angular/router`).
+
+**Dependencies.** The library has no runtime dependency besides Angular, with one exception: [`tslib`](https://www.npmjs.com/package/tslib), the small helper library that the Angular package format (ng-packagr) requires for every Angular library. Angular itself depends on it, so it is already in your `node_modules` and adds nothing to your install. No `rxjs`, no polyfills, nothing else.
 
 ## Quick start (5 minutes)
 

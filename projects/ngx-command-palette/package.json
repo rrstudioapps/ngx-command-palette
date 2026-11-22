@@ -1,7 +1,7 @@
 {
   "name": "@rrstudioapps/ngx-command-palette",
   "version": "0.8.0",
-  "description": "Accessible ⌘K / Ctrl+K command palette for Angular: fuzzy search, sections, recents, async providers. Standalone, signals, zoneless, zero dependencies.",
+  "description": "Accessible ⌘K / Ctrl+K command palette for Angular: fuzzy search, sections, recents, async providers. Standalone, signals, zoneless, no dependencies besides Angular.",
   "keywords": [
     "angular",
     "command-palette",

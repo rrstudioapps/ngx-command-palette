@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- Documented that `tslib` (required by the Angular package format and already a dependency of Angular) is the only runtime dependency besides Angular, in the README and CONTRIBUTING. The package description no longer says "zero dependencies".
 - Peer dependency range narrowed to Angular 22 (`^22.0.0`), the only major the library is tested against. It may be widened again in a minor release once other versions are tested.
 
 ## [0.8.0] - 2026-11-21

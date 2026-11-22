@@ -29,7 +29,7 @@ npm run build:demo
 npm run e2e
 ```
 
-- Keep the library free of runtime dependencies besides Angular.
+- Keep the library free of runtime dependencies besides Angular. The only exception is `tslib`, which the Angular package format requires; do not add others.
 - Add or update unit tests for logic changes (`*.spec.ts` next to the code).
 - Keep the palette accessible: check keyboard use and run axe on the demo when you change the template.
 - Update `CHANGELOG.md` under an "Unreleased" heading.
