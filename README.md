@@ -37,7 +37,7 @@ standalone components, signals, zoneless-ready and **no dependencies besides Ang
 npm install @rrstudioapps/ngx-command-palette
 ```
 
-Requires Angular 21 or 22 (`@angular/core`, `@angular/common`, `@angular/router`).
+Requires Angular 22 (`@angular/core`, `@angular/common`, `@angular/router`).
 
 ## Quick start (5 minutes)
 

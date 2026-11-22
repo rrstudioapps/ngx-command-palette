@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Changed
+
+- Peer dependency range narrowed to Angular 22 (`^22.0.0`), the only major the library is tested against. It may be widened again in a minor release once other versions are tested.
+
 ## [0.8.0] - 2026-11-21
 
 ### Added
