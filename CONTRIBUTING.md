@@ -27,7 +27,11 @@ axe-core accessibility on the demo, in light and dark). They need a Chromium for
 ```bash
 npm run build:demo
 npm run e2e
+npm run e2e:cross   # also needs Firefox: npx playwright-core install firefox
 ```
+
+For a change to the library itself, check that it still renders on the server (after `npm run build:lib`):
+`npm run e2e:ssr`.
 
 - Keep the library free of runtime dependencies besides Angular. The only exception is `tslib`, which the Angular package format requires; do not add others.
 - Add or update unit tests for logic changes (`*.spec.ts` next to the code).

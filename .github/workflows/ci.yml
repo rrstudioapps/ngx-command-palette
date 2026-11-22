@@ -55,7 +55,8 @@ jobs:
       - run: npm test
       - run: npm run build:lib
 
-  # Real browser: keyboard flows and axe-core on the demo, in light and dark themes
+  # Real browsers: keyboard flows and axe-core on the demo, in light and dark themes, Firefox, a touch
+  # phone and zoom levels; server-side rendering of the built library in plain Node
   e2e:
     runs-on: ubuntu-24.04
     steps:
@@ -65,6 +66,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npx playwright-core install --with-deps chromium
+      - run: npx playwright-core install --with-deps chromium firefox
       - run: npm run build:demo
       - run: npm run e2e
+      - run: npm run e2e:cross
+      - run: npm run build:lib
+      - run: npm run e2e:ssr

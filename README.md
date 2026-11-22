@@ -605,6 +605,8 @@ npm test             # unit tests (Vitest)
 npm run lint
 npm run build        # library (dist/ngx-command-palette) + demo
 npm run build:demo && npm run e2e   # browser flows and axe-core on the demo (needs Chromium)
+npm run e2e:cross                   # Firefox, touch phone and 200% / 400% zoom (needs Chromium and Firefox)
+npm run build:lib && npm run e2e:ssr   # server-side rendering of the built library in plain Node
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).

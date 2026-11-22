@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- Development tooling only: `npm run e2e:ssr` renders the built library with Angular SSR in plain Node, and `npm run e2e:cross` runs the browser checks in Firefox, on a touch phone and at 200% / 400% zoom. Both run in CI. The published package is unchanged.
 - Documented that `tslib` (required by the Angular package format and already a dependency of Angular) is the only runtime dependency besides Angular, in the README and CONTRIBUTING. The package description no longer says "zero dependencies".
 - Peer dependency range narrowed to Angular 22 (`^22.0.0`), the only major the library is tested against. It may be widened again in a minor release once other versions are tested.
 
