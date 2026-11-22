@@ -24,7 +24,7 @@ describe('README recipes', () => {
     TestBed.configureTestingModule({
       providers: [
         provideCommandPalette({
-          labels: { placeholder: 'Scrivi un comando…', empty: 'Nessun risultato' },
+          labels: { placeholder: 'Befehl eingeben…', empty: 'Keine Ergebnisse' },
         }),
       ],
     });
@@ -32,8 +32,8 @@ describe('README recipes', () => {
     TestBed.inject(CommandPaletteService).open('zzz');
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelector('input')?.getAttribute('placeholder')).toBe('Scrivi un comando…');
-    expect(text(el)).toContain('Nessun risultato');
+    expect(el.querySelector('input')?.getAttribute('placeholder')).toBe('Befehl eingeben…');
+    expect(text(el)).toContain('Keine Ergebnisse');
   });
 
   it('page commands: registered by a component and removed when it is destroyed', () => {

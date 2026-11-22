@@ -586,7 +586,7 @@ describe('CommandPaletteComponent', () => {
   });
 
   describe('dynamic labels', () => {
-    const lang = signal<'en' | 'it'>('en');
+    const lang = signal<'en' | 'de'>('en');
     async function create() {
       lang.set('en');
       localStorage.clear();
@@ -595,15 +595,15 @@ describe('CommandPaletteComponent', () => {
           provideRouter([]),
           provideCommandPalette({
             labels: () =>
-              lang() === 'it'
+              lang() === 'de'
                 ? {
-                    placeholder: 'Cerca…',
-                    dialog: 'Palette comandi',
-                    listbox: 'Risultati',
-                    empty: 'Nessun risultato',
-                    results: '{count} risultati',
-                    recent: 'Recenti',
-                    closeHint: 'Esc IT',
+                    placeholder: 'Suchen…',
+                    dialog: 'Befehlspalette',
+                    listbox: 'Ergebnisse',
+                    empty: 'Keine Ergebnisse',
+                    results: '{count} Ergebnisse',
+                    recent: 'Zuletzt',
+                    closeHint: 'Esc DE',
                   }
                 : {},
           }),
@@ -624,24 +624,24 @@ describe('CommandPaletteComponent', () => {
       await open();
       expect(input().placeholder).toBe('Type a command or search…');
       expect(status()).toBe('2 results');
-      lang.set('it');
+      lang.set('de');
       await fixture.whenStable();
-      expect(input().placeholder).toBe('Cerca…');
-      expect(q('[role="dialog"]')!.getAttribute('aria-label')).toBe('Palette comandi');
-      expect(q('[role="listbox"]')!.getAttribute('aria-label')).toBe('Risultati');
-      expect(q('.rr-cp-esc')!.textContent).toBe('Esc IT');
-      expect(status()).toBe('2 risultati');
+      expect(input().placeholder).toBe('Suchen…');
+      expect(q('[role="dialog"]')!.getAttribute('aria-label')).toBe('Befehlspalette');
+      expect(q('[role="listbox"]')!.getAttribute('aria-label')).toBe('Ergebnisse');
+      expect(q('.rr-cp-esc')!.textContent).toBe('Esc DE');
+      expect(status()).toBe('2 Ergebnisse');
       input().value = 'zzz';
       input().dispatchEvent(new Event('input'));
       await fixture.whenStable();
-      expect(status()).toBe('Nessun risultato');
+      expect(status()).toBe('Keine Ergebnisse');
     });
 
     it('applies a change made while closed the next time it opens, and back again', async () => {
       await create();
-      lang.set('it');
+      lang.set('de');
       await open();
-      expect(input().placeholder).toBe('Cerca…');
+      expect(input().placeholder).toBe('Suchen…');
       service.close();
       lang.set('en');
       await open();
@@ -654,9 +654,9 @@ describe('CommandPaletteComponent', () => {
       await service.execute(service.commands()[0]);
       await open();
       expect(q('.rr-cp-group-label')!.textContent).toBe('Recent');
-      lang.set('it');
+      lang.set('de');
       await fixture.whenStable();
-      expect(q('.rr-cp-group-label')!.textContent).toBe('Recenti');
+      expect(q('.rr-cp-group-label')!.textContent).toBe('Zuletzt');
     });
   });
 

@@ -1058,10 +1058,10 @@ describe('CommandPaletteService', () => {
 
   describe('dynamic labels', () => {
     it('follows a signal: group, Recent and Pinned headings', async () => {
-      const lang = signal<'en' | 'it'>('en');
+      const lang = signal<'en' | 'de'>('en');
       const service = setup({
         labels: () =>
-          lang() === 'it' ? { recent: 'Recenti', pinned: 'Fissati', defaultGroup: 'Comandi' } : {},
+          lang() === 'de' ? { recent: 'Zuletzt', pinned: 'Angeheftet', defaultGroup: 'Befehle' } : {},
       });
       service.register([
         { id: 'a', label: 'Alpha', run: noop },
@@ -1069,18 +1069,18 @@ describe('CommandPaletteService', () => {
       ]);
       await service.execute(service.commands()[0]);
       expect(labels(service).map((s) => s[0])).toEqual(['Pinned', 'Recent', 'Commands']);
-      lang.set('it');
-      expect(labels(service).map((s) => s[0])).toEqual(['Fissati', 'Recenti', 'Comandi']);
+      lang.set('de');
+      expect(labels(service).map((s) => s[0])).toEqual(['Angeheftet', 'Zuletzt', 'Befehle']);
       expect(service.labels().loading).toBe('Loading…');
       lang.set('en');
-      lang.set('it');
+      lang.set('de');
       lang.set('en');
       expect(labels(service).map((s) => s[0])).toEqual(['Pinned', 'Recent', 'Commands']);
     });
 
     it('still accepts a static object, merged with the defaults', () => {
-      const service = setup({ labels: { recent: 'Recenti' } });
-      expect(service.labels().recent).toBe('Recenti');
+      const service = setup({ labels: { recent: 'Zuletzt' } });
+      expect(service.labels().recent).toBe('Zuletzt');
       expect(service.labels().empty).toBe(DEFAULT_COMMAND_PALETTE_LABELS.empty);
     });
 
