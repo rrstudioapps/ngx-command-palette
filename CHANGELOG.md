@@ -3,13 +3,14 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
-## [Unreleased]
+## [1.0.0] - 2026-11-22
+
+First stable release. The public API is now stable and follows [Semantic Versioning](https://semver.org): breaking changes only come with a new major version. The library itself is unchanged since 0.8.0, and nothing needs to change when upgrading from it.
 
 ### Changed
 
-- Development tooling only: `npm run e2e:ssr` renders the built library with Angular SSR in plain Node, and `npm run e2e:cross` runs the browser checks in Firefox, on a touch phone and at 200% / 400% zoom. Both run in CI. The published package is unchanged.
 - Documented that `tslib` (required by the Angular package format and already a dependency of Angular) is the only runtime dependency besides Angular, in the README and CONTRIBUTING. The package description no longer says "zero dependencies".
-- Peer dependency range narrowed to Angular 22 (`^22.0.0`), the only major the library is tested against. It may be widened again in a minor release once other versions are tested.
+- Development tooling only: `npm run e2e:ssr` renders the built library with Angular SSR in plain Node, and `npm run e2e:cross` runs the browser checks in Firefox, on a touch phone and at 200% / 400% zoom. Both run in CI. The published package is otherwise unchanged.
 
 ## [0.8.0] - 2026-11-21
 
