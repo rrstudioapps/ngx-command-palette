@@ -112,6 +112,6 @@ export function searchCustomers(
 export const LINKS = {
   github: 'https://github.com/rrstudioapps/ngx-command-palette',
   npm: 'https://www.npmjs.com/package/@rrstudioapps/ngx-command-palette',
-  demos: 'https://demo.rr-dev.eu/',
-  providentia: 'https://demo.rr-dev.eu/providentia/overview',
+  demos: 'https://rrstudio.app/',
+  providentia: 'https://rrstudio.app/providentia/overview',
 };

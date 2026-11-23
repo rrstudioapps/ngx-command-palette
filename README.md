@@ -6,7 +6,7 @@ An accessible **⌘K / Ctrl+K command palette for Angular**, built the Angular w
 [![npm](https://img.shields.io/npm/v/@rrstudioapps/ngx-command-palette)](https://www.npmjs.com/package/@rrstudioapps/ngx-command-palette)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**[Live demo →](https://demo.rr-dev.eu/command-palette/)**
+**[Live demo →](https://rrstudio.app/command-palette/)**
 
 ![ngx-command-palette demo: fuzzy search, sub-palettes, theme switch and async customer search](https://raw.githubusercontent.com/rrstudioapps/ngx-command-palette/main/docs/demo.gif)
 
@@ -674,4 +674,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## Also by rrstudio
 
 Looking for a complete Angular admin dashboard? See the live demos of the
-[dashboard templates](https://demo.rr-dev.eu/) by the same author.
+[dashboard templates](https://rrstudio.app/) by the same author.
