@@ -2,6 +2,7 @@
   <div
     class="rr-cp"
     [class.rr-cp-center]="config.position === 'center'"
+    [class.rr-cp-has-hints]="prefixHints().length > 0"
     [attr.data-theme]="resolvedTheme()"
     (mousedown)="onOverlayDown($event)"
   >
@@ -174,6 +175,28 @@
             {{ labels().empty }}
           }
         </div>
+      }
+
+      @if (prefixHints(); as hints) {
+        @if (hints.length) {
+          <div class="rr-cp-hints" role="group" [attr.aria-label]="labels().prefixHints">
+            @for (hint of hints; track hint.prefix) {
+              <button
+                type="button"
+                class="rr-cp-hint"
+                [class.rr-cp-hint-active]="hint.active"
+                [attr.aria-pressed]="hint.active"
+                (mousedown)="$event.preventDefault()"
+                (click)="onPrefixHint(hint)"
+              >
+                <kbd>{{ hint.prefix }}</kbd>
+                @if (hint.label) {
+                  <span>{{ hint.label }}</span>
+                }
+              </button>
+            }
+          </div>
+        }
       }
 
       <!-- prettier-ignore -->

@@ -141,6 +141,24 @@ try {
     await page.context().close();
   });
 
+  await check('the prefix hints list the modes and a click types the prefix', async () => {
+    const page = await newPage();
+    await openPalette(page);
+    const hints = page.locator('.rr-cp-hint');
+    equal(
+      (await hints.allTextContents()).map((t) => t.replace(/\s+/g, '')),
+      ['>Actions', '@Customers'],
+      'hints',
+    );
+    await hints.nth(1).click();
+    await until(() => input(page).inputValue(), '@', 'prefix typed');
+    await until(() => hints.nth(1).getAttribute('aria-pressed'), 'true', 'pressed');
+    equal(await input(page).evaluate((el) => el === document.activeElement), true, 'input focused');
+    await hints.nth(1).click();
+    await until(() => input(page).inputValue(), '', 'prefix removed');
+    await page.context().close();
+  });
+
   await check('a command hotkey works with the palette closed', async () => {
     const page = await newPage();
     const themeLabel = async () => {

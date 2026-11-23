@@ -20,6 +20,62 @@ describe('README recipes', () => {
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
   });
 
+  it('prefix modes: the hints are listed and named as documented', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideCommandPalette({
+          showPrefixHints: true,
+          prefixes: [
+            { prefix: '>', kind: 'action' },
+            { prefix: '/', kind: 'route' },
+            { prefix: '#', groups: ['Customers'] },
+            { prefix: '@', label: 'People' },
+          ],
+        }),
+      ],
+    });
+    const fixture = TestBed.createComponent(CommandPaletteComponent);
+    TestBed.inject(CommandPaletteService).open();
+    await fixture.whenStable();
+    const hints = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.rr-cp-hint'),
+    ).map((h) => (h.textContent ?? '').replace(/\s+/g, ''));
+    expect(hints).toEqual(['>Actions', '/Pages', '#Customers', '@People']);
+  });
+
+  it('commands from your routes: data, filter, describe and a manual override', () => {
+    @Component({ selector: 'rr-page', template: '' })
+    class Page {}
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          {
+            path: 'billing',
+            component: Page,
+            data: { commandPalette: { label: 'Invoices', keywords: ['pay'] } },
+          },
+          { path: 'internal', component: Page, data: { commandPalette: false } },
+          { path: 'admin', component: Page },
+          { path: '', component: Page },
+        ]),
+        provideCommandPalette({
+          routes: {
+            group: 'Go to',
+            filter: (_route, url) => !url.startsWith('/admin'),
+            describe: (_route, url) => (url === '/' ? { label: 'Home', keywords: ['start'] } : {}),
+          },
+        }),
+      ],
+    });
+    const service = TestBed.inject(CommandPaletteService);
+    service.open();
+    expect(service.commands().map((c) => [c.id, c.label, c.group])).toEqual([
+      ['route:/billing', 'Invoices', 'Go to'],
+      ['route:/', 'Home', 'Go to'],
+    ]);
+  });
+
   it('labels: translated texts are shown', () => {
     TestBed.configureTestingModule({
       providers: [

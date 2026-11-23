@@ -188,6 +188,38 @@ export class CommandPaletteComponent {
     return icon instanceof TemplateRef;
   }
 
+  /** Search modes shown in the footer (`showPrefixHints`): none in a sub-palette or a value step. */
+  protected readonly prefixHints = computed(() => {
+    if (!this.config.showPrefixHints || this.crumbs().length) return [];
+    const active = this.service.activePrefix();
+    const { prefixActions, prefixPages } = this.labels();
+    return this.config.prefixes
+      .filter((p) => p.prefix)
+      .map((p) => ({
+        prefix: p.prefix,
+        label:
+          p.label ??
+          (p.groups?.length
+            ? p.groups.join(', ')
+            : p.kind === 'action'
+              ? prefixActions
+              : p.kind === 'route'
+                ? prefixPages
+                : ''),
+        active: active === p,
+      }));
+  });
+
+  /** Types the prefix of a hint in front of the search text, or removes it when it is the active one. */
+  protected onPrefixHint(hint: { prefix: string; active: boolean }): void {
+    const query = this.service.query().trim();
+    const current = this.service.activePrefix();
+    const text = (current ? query.slice(current.prefix.length) : query).trim();
+    this.activeKey.set(null);
+    this.service.setQuery(hint.active ? text : hint.prefix + text);
+    this.input()?.nativeElement.focus({ preventScroll: true });
+  }
+
   protected onInput(event: Event): void {
     this.activeKey.set(null);
     this.service.setQuery((event.target as HTMLInputElement).value);

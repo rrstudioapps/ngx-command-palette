@@ -30,6 +30,8 @@ export {
   type CommandPaletteOptions,
   type CommandPalettePosition,
   type CommandPaletteRecentOptions,
+  type CommandPaletteRouteInfo,
+  type CommandPaletteRoutesOptions,
   type CommandPaletteTheme,
   type RecentStorage,
 } from './lib/config';

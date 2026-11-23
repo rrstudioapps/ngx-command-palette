@@ -5,12 +5,14 @@ import {
   DestroyRef,
   DOCUMENT,
   Injectable,
+  Injector,
   Signal,
   assertInInjectionContext,
   computed,
   inject,
   isSignal,
   linkedSignal,
+  runInInjectionContext,
   signal,
 } from '@angular/core';
 import { Router } from '@angular/router';
@@ -34,6 +36,7 @@ import {
 } from './config';
 import { fuzzyMatch, highlightSegments } from './fuzzy';
 import { matchesShortcut, parseShortcut } from './shortcut';
+import { routeCommands } from './route-commands';
 import { RecentStore, type RecentEntry } from './recent-store';
 
 interface Registration {
@@ -65,6 +68,7 @@ export class CommandPaletteService {
   private readonly config = inject(COMMAND_PALETTE_CONFIG);
   private readonly router = inject(Router, { optional: true });
   private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
 
   /** The texts in use (see the `labels` option); follows a function or signal given there. */
   readonly labels = computed(() => currentLabels(this.config));
@@ -81,6 +85,8 @@ export class CommandPaletteService {
   private readonly _isOpen = signal(false);
   private readonly _query = signal('');
   private readonly registrations = signal<readonly Registration[]>([]);
+  /** Commands built from the router configuration (`routes` option), refreshed on every open. */
+  private readonly routeSource = signal<readonly Command[]>([]);
   private readonly providers = signal<readonly CommandProvider[]>([]);
   private readonly providerState = signal<ReadonlyMap<string, ProviderState>>(new Map());
   /** Recents on: not `recent: false` and `recent.enabled` (boolean, function or signal) not false. */
@@ -137,7 +143,14 @@ export class CommandPaletteService {
         byId.set(command.id, command);
       }
     }
-    return [...byId.values()];
+    const generated = this.routeSource();
+    if (!generated.length) return [...byId.values()];
+    // Generated commands are overridden by a registered one with the same id or the same route
+    const taken = new Set<unknown>();
+    for (const command of byId.values()) {
+      if (typeof command.route === 'string') taken.add(command.route);
+    }
+    return [...generated.filter((c) => !byId.has(c.id) && !taken.has(c.route)), ...byId.values()];
   });
 
   /** True while at least one async provider is waiting for results. */
@@ -187,11 +200,24 @@ export class CommandPaletteService {
           ? (active as HTMLElement)
           : null;
     }
+    this.refreshRoutes();
     this._isOpen.set(true);
     this.pathIds.set([]);
     this.promptCommand.set(null);
     this.setQuery(query);
     if (!wasOpen) safeCall('onOpen', this.config.onOpen);
+  }
+
+  /** Rebuilds the commands of the `routes` option from the current router configuration. */
+  private refreshRoutes(): void {
+    const option = this.config.routes;
+    if (!option || !this.router) return;
+    const router = this.router;
+    const options = option === true ? {} : option;
+    const group = this.labels().routesGroup;
+    this.routeSource.set(
+      runInInjectionContext(this.injector, () => routeCommands(router.config, options, group)),
+    );
   }
 
   /** Closes the palette, cancels pending searches and restores the focus. */

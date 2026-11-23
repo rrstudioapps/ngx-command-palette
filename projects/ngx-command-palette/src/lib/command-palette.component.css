@@ -7,7 +7,7 @@
  * --rr-cp-back-icon-size, --rr-cp-path-*, --rr-cp-focus-outline, --rr-cp-focus-offset,
  * --rr-cp-group-gap, --rr-cp-group-border, --rr-cp-group-label-*, --rr-cp-item-min-height,
  * --rr-cp-item-disabled-opacity, --rr-cp-icon-size, --rr-cp-kbd-*, --rr-cp-status-border,
- * --rr-cp-empty-padding, --rr-cp-spinner-*. The full list is in the README.
+ * --rr-cp-hints-*, --rr-cp-hint-radius, --rr-cp-empty-padding, --rr-cp-spinner-*. The full list is in the README.
  *
  * Spacing, sizing and weight variables (--rr-cp-search-padding, --rr-cp-search-gap, --rr-cp-input-height,
  * --rr-cp-input-font-size, --rr-cp-input-focus-outline, --rr-cp-list-padding, --rr-cp-item-padding,
@@ -319,6 +319,50 @@
   border-top: var(--rr-cp-status-border, 1px solid var(--rr-cp-border));
   color: var(--rr-cp-muted);
   font-size: var(--rr-cp-status-size, 0.75rem);
+}
+
+.rr-cp-hints {
+  display: flex;
+  /* One line of fixed height, scrolling sideways, so the list can make room for it exactly */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: var(--rr-cp-hints-gap, 14px);
+  padding: var(--rr-cp-hints-padding, 8px 14px);
+  border-top: var(--rr-cp-hints-border, 1px solid var(--rr-cp-border));
+  color: var(--rr-cp-muted);
+  font-size: var(--rr-cp-hints-size, 0.75rem);
+}
+
+.rr-cp-has-hints .rr-cp-list {
+  /* The hints row (8 + 24 + 8 padding, 1 border) takes its share of the maximum height */
+  max-height: calc(var(--rr-cp-max-height) - var(--rr-cp-hints-height, 41px));
+}
+
+.rr-cp-hint {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  /* 24px minimum target (WCAG 2.2) */
+  min-height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--rr-cp-hint-radius, 6px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.rr-cp-hint:hover,
+.rr-cp-hint-active {
+  background: var(--rr-cp-item-active-bg);
+  color: var(--rr-cp-fg);
+}
+
+.rr-cp-hint:focus-visible {
+  outline: 2px solid var(--rr-cp-accent);
+  outline-offset: 1px;
 }
 
 .rr-cp-empty {

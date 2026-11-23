@@ -46,37 +46,6 @@ export class App {
         const icon = this.icons.map();
         return [
           {
-            id: 'nav-overview',
-            label: 'Overview',
-            group: 'Navigation',
-            icon: icon.get('home'),
-            route: '/',
-            keywords: ['home', 'start'],
-          },
-          {
-            id: 'nav-projects',
-            label: 'Projects',
-            group: 'Navigation',
-            icon: icon.get('folder'),
-            route: '/projects',
-          },
-          {
-            id: 'nav-customers',
-            label: 'Customers',
-            group: 'Navigation',
-            icon: icon.get('users'),
-            route: '/customers',
-            keywords: ['clients', 'accounts'],
-          },
-          {
-            id: 'nav-settings',
-            label: 'Settings',
-            group: 'Navigation',
-            icon: icon.get('settings'),
-            route: '/settings',
-            keywords: ['preferences', 'options'],
-          },
-          {
             id: 'theme',
             label:
               this.themeService.theme() === 'dark'

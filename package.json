@@ -9,8 +9,10 @@
     "build:demo": "ng build demo",
     "test": "ng test ngx-command-palette --watch=false",
     "typecheck": "tsc -p projects/ngx-command-palette/tsconfig.lib.json --noEmit && tsc -p projects/ngx-command-palette/tsconfig.spec.json --noEmit && tsc -p projects/demo/tsconfig.app.json --noEmit",
-    "lint": "ng lint",
-    "format": "prettier --write .",
+    "lint": "ng lint && npm run format:check",
+    "format": "prettier --write --log-level warn README.md CHANGELOG.md CONTRIBUTING.md angular.json package.json tsconfig.json projects e2e .github",
+    "format:check": "prettier --check --log-level warn README.md CHANGELOG.md CONTRIBUTING.md angular.json package.json tsconfig.json projects e2e .github",
+    "format:changed": "(git diff --name-only --diff-filter=ACMR HEAD; git ls-files -o --exclude-standard) | xargs -r prettier --write --ignore-unknown --log-level warn",
     "e2e": "node e2e/run.mjs",
     "e2e:ssr": "node e2e/ssr.mjs",
     "e2e:cross": "node e2e/cross.mjs"

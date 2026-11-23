@@ -64,6 +64,12 @@ export class IconRegistry {
           d="M12 2v3m0 14v3M4.9 4.9l2.1 2.1m10 10 2.1 2.1M2 12h3m14 0h3M4.9 19.1 7 17M17 7l2.1-2.1"
         /></svg
     ></ng-template>
+    <ng-template demoIcon="route"
+      ><svg viewBox="0 0 24 24">
+        <circle cx="6" cy="19" r="2" />
+        <circle cx="18" cy="5" r="2" />
+        <path d="M8 19h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7" /></svg
+    ></ng-template>
     <ng-template demoIcon="theme"
       ><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg
     ></ng-template>

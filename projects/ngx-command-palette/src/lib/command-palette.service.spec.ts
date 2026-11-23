@@ -1061,7 +1061,9 @@ describe('CommandPaletteService', () => {
       const lang = signal<'en' | 'de'>('en');
       const service = setup({
         labels: () =>
-          lang() === 'de' ? { recent: 'Zuletzt', pinned: 'Angeheftet', defaultGroup: 'Befehle' } : {},
+          lang() === 'de'
+            ? { recent: 'Zuletzt', pinned: 'Angeheftet', defaultGroup: 'Befehle' }
+            : {},
       });
       service.register([
         { id: 'a', label: 'Alpha', run: noop },

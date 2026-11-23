@@ -14,11 +14,13 @@ The demo imports the library from `projects/ngx-command-palette/src`, so changes
 ## Before opening a pull request
 
 ```bash
-npm run lint
+npm run lint        # ESLint and the Prettier check
 npm run typecheck
 npm test
 npm run build
 ```
+
+`npm run format` fixes the formatting of the whole project, `npm run format:changed` only of the files you changed.
 
 For changes to the UI or the keyboard behavior, also run the browser checks (keyboard flows and
 axe-core accessibility on the demo, in light and dark). They need a Chromium for `playwright-core`:

@@ -2,6 +2,7 @@
 // © 2026 rrstudio — ngx-command-palette demo
 
 import { Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
   CommandPaletteService,
   formatShortcut,
@@ -13,6 +14,7 @@ import { LINKS } from '../shared/data';
 
 @Component({
   selector: 'demo-overview',
+  imports: [RouterLink],
   template: `
     <header class="page-head">
       <p class="eyebrow">ngx-command-palette</p>
@@ -45,6 +47,10 @@ import { LINKS } from '../shared/data';
             key.
           </li>
           <li>Pick <em>Open customer by id…</em>: it asks for a value, then runs.</li>
+          <li>
+            The <em>Navigation</em> section is generated from the routes:
+            <a routerLink="/routes">see how</a>.
+          </li>
           <li>Run a command, then reopen: it shows up under <em>Recent</em>.</li>
           <li>
             Use <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd> <kbd>Enter</kbd>
@@ -58,10 +64,7 @@ import { LINKS } from '../shared/data';
       </article>
     </section>
 
-    <p class="more">
-      Also by rrstudio: <a [href]="links.demos">Angular dashboard templates</a> with this kind of
-      command palette built in.
-    </p>
+    <p class="more">Also by rrstudio: <a [href]="links.demos">Angular dashboard templates</a>.</p>
   `,
 })
 export default class Overview {

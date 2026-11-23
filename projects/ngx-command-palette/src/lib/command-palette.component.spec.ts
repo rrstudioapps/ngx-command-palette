@@ -847,4 +847,181 @@ describe('CommandPaletteComponent', () => {
       expect(q('.rr-cp')!.classList.contains('rr-cp-center')).toBe(false);
     });
   });
+
+  describe('prefix hints', () => {
+    async function create(options: Parameters<typeof provideCommandPalette>[0] = {}) {
+      localStorage.clear();
+      TestBed.configureTestingModule({
+        providers: [
+          provideRouter([]),
+          provideCommandPalette({
+            recent: false,
+            showPrefixHints: true,
+            prefixes: [
+              { prefix: '>', kind: 'action' },
+              { prefix: '/', kind: 'route' },
+              { prefix: '@', groups: ['Customers', 'Staff'] },
+              { prefix: '#', label: 'Tags' },
+              { prefix: '!' },
+            ],
+            ...options,
+          }),
+        ],
+      });
+      service = TestBed.inject(CommandPaletteService);
+      service.register([
+        { id: 'a', label: 'Alpha', group: 'One', run: () => undefined },
+        { id: 'r', label: 'Home', group: 'One', route: '/' },
+        { id: 'c', label: 'Ada', group: 'Customers', run: () => undefined },
+      ]);
+      fixture = TestBed.createComponent(Host);
+      await fixture.whenStable();
+    }
+    const hints = () => Array.from(document.querySelectorAll<HTMLButtonElement>('.rr-cp-hint'));
+    const click = async (el: HTMLElement) => {
+      el.click();
+      await fixture.whenStable();
+    };
+
+    it('is off by default', async () => {
+      await create({ showPrefixHints: undefined });
+      await open();
+      expect(q('.rr-cp-hints')).toBeNull();
+    });
+
+    it('is not shown without prefixes', async () => {
+      await create({ prefixes: [] });
+      await open();
+      expect(q('.rr-cp-hints')).toBeNull();
+    });
+
+    it('lists the prefixes with a label from `label`, `groups` or `kind`', async () => {
+      await create();
+      await open();
+      expect(hints().map((h) => h.textContent!.replace(/\s+/g, '').trim())).toEqual([
+        '>Actions',
+        '/Pages',
+        '@Customers,Staff',
+        '#Tags',
+        '!',
+      ]);
+      const group = q('.rr-cp-hints')!;
+      expect(group.getAttribute('role')).toBe('group');
+      expect(group.getAttribute('aria-label')).toBe('Search modes');
+      expect(hints().every((h) => h.type === 'button')).toBe(true);
+    });
+
+    it('uses translated labels', async () => {
+      await create({
+        labels: { prefixHints: 'Modi', prefixActions: 'Aktionen', prefixPages: 'Seiten' },
+      });
+      await open();
+      expect(q('.rr-cp-hints')!.getAttribute('aria-label')).toBe('Modi');
+      expect(hints()[0].textContent).toContain('Aktionen');
+      expect(hints()[1].textContent).toContain('Seiten');
+    });
+
+    it('marks the root while the hints are shown, so the list can make room', async () => {
+      await create();
+      await open();
+      expect(q('.rr-cp')!.classList.contains('rr-cp-has-hints')).toBe(true);
+      service.register([
+        { id: 'p', label: 'Parent', children: [{ id: 'k', label: 'Kid', run: () => undefined }] },
+      ]);
+      await service.execute(service.commands().find((c) => c.id === 'p')!);
+      await fixture.whenStable();
+      expect(q('.rr-cp')!.classList.contains('rr-cp-has-hints')).toBe(false);
+    });
+
+    it('typing a prefix by hand marks it as pressed', async () => {
+      await create();
+      await open();
+      expect(hints().every((h) => h.getAttribute('aria-pressed') === 'false')).toBe(true);
+      service.setQuery('@ad');
+      await fixture.whenStable();
+      expect(hints().map((h) => h.getAttribute('aria-pressed'))).toEqual([
+        'false',
+        'false',
+        'true',
+        'false',
+        'false',
+      ]);
+    });
+
+    it('selecting a hint types its prefix, keeps the search text and the focus on the field', async () => {
+      await create();
+      await open();
+      input().focus();
+      await click(hints()[0]);
+      expect(service.query()).toBe('>');
+      expect(service.activePrefix()?.prefix).toBe('>');
+      expect(document.activeElement).toBe(input());
+      service.setQuery('al');
+      await fixture.whenStable();
+      await click(hints()[1]);
+      expect(service.query()).toBe('/al');
+    });
+
+    it('selecting a hint while another prefix is active swaps the prefix', async () => {
+      await create();
+      await open();
+      service.setQuery('> al');
+      await fixture.whenStable();
+      await click(hints()[2]);
+      expect(service.query()).toBe('@al');
+    });
+
+    it('selecting the active hint removes its prefix', async () => {
+      await create();
+      await open();
+      service.setQuery('@ad');
+      await fixture.whenStable();
+      await click(hints()[2]);
+      expect(service.query()).toBe('ad');
+      expect(service.activePrefix()).toBeNull();
+    });
+
+    it('a prefix hint narrows the list like the typed prefix does', async () => {
+      await create();
+      await open();
+      await click(hints()[2]);
+      expect(options().map((o) => o.textContent!.trim())).toEqual(['Ada']);
+    });
+
+    it('is hidden inside a sub-palette and during a value step, and comes back', async () => {
+      await create();
+      service.register([
+        {
+          id: 'p',
+          label: 'Parent',
+          group: 'One',
+          children: [{ id: 'k', label: 'Kid', run: () => undefined }],
+        },
+        { id: 'v', label: 'Ask', group: 'One', prompt: 'Value', run: () => undefined },
+      ]);
+      await open();
+      expect(hints().length).toBe(5);
+      await service.execute(service.commands().find((c) => c.id === 'p')!);
+      await fixture.whenStable();
+      expect(q('.rr-cp-hints')).toBeNull();
+      service.back();
+      await fixture.whenStable();
+      expect(hints().length).toBe(5);
+      await service.execute(service.commands().find((c) => c.id === 'v')!);
+      await fixture.whenStable();
+      expect(q('.rr-cp-hints')).toBeNull();
+    });
+
+    it('keeps the focus trap: the hints are the last stops of the dialog', async () => {
+      await create();
+      await open();
+      input().focus();
+      const back = keydown(input(), 'Tab', { shiftKey: true });
+      expect(back.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(hints().at(-1));
+      const forward = keydown(hints().at(-1)!, 'Tab');
+      expect(forward.defaultPrevented).toBe(true);
+      expect(document.activeElement).toBe(input());
+    });
+  });
 });

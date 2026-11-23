@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: MIT
 // © 2026 rrstudio — ngx-command-palette
 
-import { EnvironmentProviders, InjectionToken, makeEnvironmentProviders } from '@angular/core';
+import {
+  EnvironmentProviders,
+  InjectionToken,
+  makeEnvironmentProviders,
+  type TemplateRef,
+} from '@angular/core';
+import type { Route } from '@angular/router';
 
 import type { Command } from './command.model';
 import { matchCommand, type FuzzyMatch } from './fuzzy';
@@ -14,6 +20,28 @@ export type CommandPalettePosition = 'top' | 'center';
 /** Why the palette closed, as passed to `onClose`. */
 export type CommandPaletteCloseReason = 'escape' | 'overlay' | 'run' | 'toggle' | 'api';
 
+/** How a route shows up in the palette (see the `routes` option and `Route.data.commandPalette`). */
+export interface CommandPaletteRouteInfo {
+  readonly label?: string;
+  readonly group?: string;
+  readonly description?: string;
+  readonly icon?: string | TemplateRef<unknown>;
+  readonly keywords?: readonly string[];
+}
+
+/** Options of the `routes` option: commands built from the router configuration. */
+export interface CommandPaletteRoutesOptions {
+  /** Section of the generated commands. Default: `labels.routesGroup`. */
+  readonly group?: string;
+  /**
+   * Return `false` to leave a route out. Called with the route and its full URL, each time the
+   * palette opens and in an injection context, so `inject()` works.
+   */
+  readonly filter?: (route: Route, url: string) => boolean;
+  /** Overrides what is shown for a route; return `null` to leave it out. Same rules as `filter`. */
+  readonly describe?: (route: Route, url: string) => CommandPaletteRouteInfo | null;
+}
+
 /** Texts of the palette, for translations. */
 export interface CommandPaletteLabels {
   readonly placeholder: string;
@@ -23,6 +51,14 @@ export interface CommandPaletteLabels {
   readonly loading: string;
   readonly recent: string;
   readonly pinned: string;
+  /** Section of the commands built from the routes (see the `routes` option). */
+  readonly routesGroup: string;
+  /** Accessible name of the row of prefix hints (see `showPrefixHints`). */
+  readonly prefixHints: string;
+  /** Hint name of a prefix with `kind: 'action'` and no `label` or `groups`. */
+  readonly prefixActions: string;
+  /** Hint name of a prefix with `kind: 'route'` and no `label` or `groups`. */
+  readonly prefixPages: string;
   /** Announced when a command asks for a value. `{name}` is the command label. */
   readonly prompt: string;
   readonly defaultGroup: string;
@@ -58,6 +94,11 @@ export interface CommandPrefix {
   readonly groups?: readonly string[];
   /** Only route commands or only commands that run a function. */
   readonly kind?: 'route' | 'action';
+  /**
+   * Name shown in the prefix hints (see `showPrefixHints`). Default: the `groups` joined by a comma,
+   * else `labels.prefixActions` or `labels.prefixPages` for a `kind`, else only the prefix.
+   */
+  readonly label?: string;
 }
 
 export interface CommandPaletteRecentOptions {
@@ -139,6 +180,12 @@ export interface CommandPaletteConfig {
   readonly sectionOrder: readonly string[];
   /** `auto` follows `prefers-color-scheme`. Default: `auto`. */
   readonly theme: CommandPaletteTheme;
+  /**
+   * Builds a navigation command for every route of the router configuration (`true` for the
+   * defaults, or an options object). Commands registered by hand win over generated ones with the
+   * same id or route. Routes are read each time the palette opens. Default: `false`.
+   */
+  readonly routes: boolean | CommandPaletteRoutesOptions;
   /** "Recent" section shown with an empty query; `false` disables it. */
   readonly recent: CommandPaletteRecentOptions | false;
   /** Debounce for async providers, in ms. Default: 200. */
@@ -160,6 +207,12 @@ export interface CommandPaletteConfig {
    * groups keep their accessible name. Default: `true`.
    */
   readonly showSectionLabels: boolean;
+  /**
+   * Shows a row at the bottom with the search modes of `prefixes` (for example `>` Actions, `@`
+   * Customers). Selecting one types its prefix; selecting the active one removes it. Hidden inside
+   * a sub-palette and while a command asks for a value, and when there are no prefixes. Default: `false`.
+   */
+  readonly showPrefixHints: boolean;
   /** Shows the close key hint (`labels.closeHint`, Esc) in the search field. Default: `true`. */
   readonly showCloseHint: boolean;
   /** Highlights the characters matched by the search. Default: `true`. */
@@ -190,6 +243,10 @@ export const DEFAULT_COMMAND_PALETTE_LABELS: CommandPaletteLabels = {
   loading: 'Loading…',
   recent: 'Recent',
   pinned: 'Pinned',
+  routesGroup: 'Pages',
+  prefixHints: 'Search modes',
+  prefixActions: 'Actions',
+  prefixPages: 'Pages',
   prompt: '{name}: type a value and press Enter',
   defaultGroup: 'Commands',
   results: '{count} results',
@@ -209,6 +266,7 @@ export const DEFAULT_COMMAND_PALETTE_CONFIG: CommandPaletteConfig = {
   position: 'top',
   sectionOrder: [],
   theme: 'auto',
+  routes: false,
   recent: { max: 5, storageKey: 'rr-cp:recent' },
   debounceMs: 200,
   maxResults: 50,
@@ -216,6 +274,7 @@ export const DEFAULT_COMMAND_PALETTE_CONFIG: CommandPaletteConfig = {
   filter: matchCommand,
   prefixes: [],
   showSectionLabels: true,
+  showPrefixHints: false,
   showCloseHint: true,
   highlightMatches: true,
   showStatus: false,
