@@ -3,6 +3,19 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
+## [1.1.0] - 2026-11-23
+
+### Added
+
+- `routes` option: builds a navigation command for every route of the router configuration (`routes: true`, or `{ group, filter, describe }`). Per route, `data.commandPalette` can hide it (`false`) or set its label, group, description, icon and keywords. Commands registered by hand with the same id or route replace the generated ones. `filter` and `describe` run in an injection context, so they can `inject()`. Off by default.
+- `labels.routesGroup` (default "Pages"), the section of the generated commands.
+- `showPrefixHints` option: a row at the bottom that lists the search modes of `prefixes` (`>` Actions, `@` Customers…). Each hint is a button that types its prefix, or removes it when it is the active one. Hidden inside a sub-palette, during a value step and without prefixes. Off by default.
+- `label` on a prefix, and the labels `prefixHints`, `prefixActions` and `prefixPages`; the CSS variables `--rr-cp-hints-padding`, `--rr-cp-hints-size`, `--rr-cp-hints-border`, `--rr-cp-hints-gap` and `--rr-cp-hint-radius`.
+
+### Changed
+
+- README and demo no longer claim that the author's dashboard templates ship this palette.
+
 ## [1.0.0] - 2026-11-22
 
 First stable release. The public API is now stable and follows [Semantic Versioning](https://semver.org): breaking changes only come with a new major version. The library itself is unchanged since 0.8.0, and nothing needs to change when upgrading from it.
