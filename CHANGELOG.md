@@ -3,6 +3,12 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
+## [1.1.1] - 2026-11-23
+
+### Changed
+
+- The live demo and the author's other projects moved to https://rrstudio.app: the README and the demo now link to the new address (the old one redirects). No change to the library code or the API.
+
 ## [1.1.0] - 2026-11-23
 
 ### Added
