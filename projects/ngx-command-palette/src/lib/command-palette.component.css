@@ -123,16 +123,21 @@
   font-size: var(--rr-cp-path-size, 0.8125rem);
 }
 
-.rr-cp-path button {
+/* Shared by the path buttons and the hint buttons */
+.rr-cp-path button,
+.rr-cp-hint {
   display: inline-flex;
   align-items: center;
-  padding: var(--rr-cp-path-button-padding, 2px 6px);
   border: 0;
-  border-radius: var(--rr-cp-path-button-radius, 6px);
   background: transparent;
   color: inherit;
   font: inherit;
   cursor: pointer;
+}
+
+.rr-cp-path button {
+  padding: var(--rr-cp-path-button-padding, 2px 6px);
+  border-radius: var(--rr-cp-path-button-radius, 6px);
 }
 
 .rr-cp-path button:hover {
@@ -339,19 +344,12 @@
 }
 
 .rr-cp-hint {
-  display: inline-flex;
-  align-items: center;
   flex: none;
   gap: 6px;
   /* 24px minimum target (WCAG 2.2) */
   min-height: 24px;
   padding: 0 6px;
-  border: 0;
   border-radius: var(--rr-cp-hint-radius, 6px);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
 }
 
 .rr-cp-hint:hover,

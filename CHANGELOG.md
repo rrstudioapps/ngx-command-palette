@@ -3,6 +3,13 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
+## [1.1.2] - 2026-11-24
+
+### Changed
+
+- The component stylesheet is a little smaller: the path buttons and the hint buttons share their common declarations. No visual change and no change to the API or the CSS variables.
+- README: the closing section now just points to the author's site, without mentioning other products.
+
 ## [1.1.1] - 2026-11-23
 
 ### Changed

@@ -673,5 +673,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Also by rrstudio
 
-Looking for a complete Angular admin dashboard? See the live demos of the
-[dashboard templates](https://rrstudio.app/) by the same author.
+More from the same author at [rrstudio.app](https://rrstudio.app/).
