@@ -1,20 +1,24 @@
 // SPDX-License-Identifier: MIT
 // © 2026 rrstudio — ngx-command-palette demo
 
-import { Component, computed, input, numberAttribute } from '@angular/core';
+import { Component, computed, inject, input, numberAttribute, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { type Command, injectCommands } from '@rrstudioapps/ngx-command-palette';
 
-import { CUSTOMERS } from '../shared/data';
+import { CUSTOMERS, type Customer } from '../shared/data';
+import { IconRegistry } from '../shared/icons';
+import { DemoNote } from '../shared/note';
 
 @Component({
   selector: 'demo-customers',
-  imports: [RouterLink],
+  imports: [RouterLink, DemoNote],
   template: `
     <header class="page-head">
       <h1>Customers</h1>
       <p class="lead">
         200 fake customers. Search them from the palette (2+ characters): results come from a
-        <code>CommandProvider</code> with debounce, loading state and request cancellation.
+        <code>CommandProvider</code> with debounce, loading state and request cancellation. Showing:
+        <strong>{{ plan() }}</strong> plan.
       </p>
     </header>
     <div class="table-wrap">
@@ -27,7 +31,7 @@ import { CUSTOMERS } from '../shared/data';
           </tr>
         </thead>
         <tbody>
-          @for (c of first; track c.id) {
+          @for (c of shown(); track c.id) {
             <tr>
               <td>
                 <a [routerLink]="['/customers', c.id]">{{ c.name }}</a>
@@ -39,10 +43,57 @@ import { CUSTOMERS } from '../shared/data';
         </tbody>
       </table>
     </div>
+    <demo-note
+      text="Two sources at once: the table is filtered by commands registered here (try “plan”), while the search results come from a provider registered by the app shell."
+      [code]="snippet"
+    />
   `,
 })
 export default class Customers {
-  protected readonly first = CUSTOMERS.slice(0, 12);
+  private readonly icons = inject(IconRegistry);
+  protected readonly plan = signal<Customer['plan'] | 'All'>('All');
+  protected readonly shown = computed(() =>
+    CUSTOMERS.filter((c) => this.plan() === 'All' || c.plan === this.plan()).slice(0, 12),
+  );
+  protected readonly snippet = `{
+  id: 'plan', label: 'Filter by plan…',
+  children: ['All', 'Free', 'Pro', 'Business'].map((plan) => ({
+    id: 'plan-' + plan, label: plan, run: () => filter.set(plan),
+  })),
+}`;
+
+  constructor() {
+    injectCommands(
+      computed<Command[]>(() => [
+        {
+          id: 'customers-plan',
+          label: 'Filter by plan…',
+          description: `Now: ${this.plan()}`,
+          group: 'Customers',
+          icon: this.icons.map().get('users'),
+          keywords: ['free', 'pro', 'business', 'subscription'],
+          children: (['All', 'Free', 'Pro', 'Business'] as const).map((plan) => ({
+            id: `customers-plan-${plan}`,
+            label: plan === 'All' ? 'All plans' : `${plan} plan`,
+            run: () => this.plan.set(plan),
+          })),
+        },
+        {
+          id: 'customers-copy-emails',
+          label: 'Copy emails of the listed customers',
+          group: 'Customers',
+          icon: this.icons.map().get('copy'),
+          keywords: ['export', 'mailing'],
+          run: () =>
+            navigator.clipboard?.writeText(
+              this.shown()
+                .map((c) => c.email)
+                .join(', '),
+            ),
+        },
+      ]),
+    );
+  }
 }
 
 @Component({

@@ -51,6 +51,10 @@ import { LINKS } from '../shared/data';
             The <em>Navigation</em> section is generated from the routes:
             <a routerLink="/routes">see how</a>.
           </li>
+          <li>
+            Open <a routerLink="/recipes">Recipes</a> for confirmations, prompts and async search,
+            or <a routerLink="/playground">Playground</a> to restyle the palette live.
+          </li>
           <li>Run a command, then reopen: it shows up under <em>Recent</em>.</li>
           <li>
             Use <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Home</kbd> <kbd>End</kbd> <kbd>Enter</kbd>

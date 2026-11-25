@@ -5,10 +5,12 @@ import { Component, computed, inject } from '@angular/core';
 import { CommandPaletteService, injectCommands } from '@rrstudioapps/ngx-command-palette';
 
 import { IconRegistry } from '../shared/icons';
+import { DemoNote } from '../shared/note';
 import { ThemeService } from '../shared/theme';
 
 @Component({
   selector: 'demo-settings',
+  imports: [DemoNote],
   template: `
     <header class="page-head">
       <h1>Settings</h1>
@@ -38,9 +40,19 @@ import { ThemeService } from '../shared/theme';
         <button type="button" (click)="palette.clearRecent()">Clear</button>
       </div>
     </div>
+    <demo-note
+      text="Commands can carry keywords (“spacing” finds the density toggle) and a label that follows the current state."
+      [code]="snippet"
+    />
   `,
 })
 export default class Settings {
+  protected readonly snippet = `{
+  id: 'density',
+  label: compact() ? 'Use comfortable density' : 'Use compact density',
+  keywords: ['spacing', 'layout'],
+  run: () => compact.update((v) => !v),
+}`;
   protected readonly theme = inject(ThemeService);
   protected readonly palette = inject(CommandPaletteService);
   private readonly icons = inject(IconRegistry);

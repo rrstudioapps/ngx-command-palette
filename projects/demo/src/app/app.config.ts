@@ -14,6 +14,8 @@ const ROUTE_ICONS: Record<string, string> = {
   '/projects': 'folder',
   '/customers': 'users',
   '/settings': 'settings',
+  '/recipes': 'archive',
+  '/playground': 'theme',
   '/routes': 'route',
 };
 

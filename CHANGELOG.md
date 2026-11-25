@@ -3,6 +3,16 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
+## [1.1.3] - 2026-11-25
+
+### Added
+
+- `funding` field in the package metadata and a `FUNDING.yml` for the repository (Ko-fi). No change to the library code or the API.
+
+### Changed
+
+- The live demo got a new look, aligned with https://rrstudio.app, and more to explore: a Recipes page (confirmation step, value prompt, state-based `hidden`, per-command hotkey, async search), a Playground page to restyle the palette with the CSS variables, a "What this page shows" note on each page and more example commands. Demo only: no change to the library code or the API.
+
 ## [1.1.2] - 2026-11-24
 
 ### Changed

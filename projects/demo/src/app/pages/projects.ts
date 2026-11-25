@@ -5,6 +5,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { type Command, injectCommands } from '@rrstudioapps/ngx-command-palette';
 
 import { IconRegistry } from '../shared/icons';
+import { DemoNote } from '../shared/note';
 
 interface Project {
   readonly id: number;
@@ -22,6 +23,7 @@ const NAMES = [
 
 @Component({
   selector: 'demo-projects',
+  imports: [DemoNote],
   template: `
     <header class="page-head">
       <h1>Projects</h1>
@@ -39,10 +41,21 @@ const NAMES = [
         </li>
       }
     </ul>
+    <demo-note
+      text="The list is a signal, so the commands are a computed signal too: archive a project and its command goes away. A disabled command stays visible but cannot be run."
+      [code]="snippet"
+    />
   `,
 })
 export default class Projects {
   private readonly icons = inject(IconRegistry);
+  protected readonly snippet = `injectCommands(
+  computed(() => projects().map((p) => ({
+    id: 'archive-' + p.id,
+    label: 'Archive ' + p.name,
+    run: () => archive(p.id),
+  }))),
+);`;
   private nextId = NAMES.length + 1;
   protected readonly projects = signal<Project[]>(
     NAMES.map((name, i) => ({ id: i + 1, name, archived: false })),
@@ -70,6 +83,15 @@ export default class Projects {
               icon: icon.get('archive'),
               run: () => this.archive(p.id),
             })),
+          {
+            id: 'project-restore',
+            label: 'Restore archived projects',
+            group: 'Projects',
+            icon: icon.get('folder'),
+            keywords: ['unarchive', 'undo'],
+            hidden: () => !this.projects().some((p) => p.archived),
+            run: () => this.projects.update((l) => l.map((p) => ({ ...p, archived: false }))),
+          },
           {
             id: 'project-delete-all',
             label: 'Delete all projects',

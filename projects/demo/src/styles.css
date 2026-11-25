@@ -3,41 +3,45 @@
 
 /* Global demo styles (the palette has its own, driven by the --rr-cp-* variables) */
 :root {
-  --bg: #f6f7f9;
+  --bg: #f7f5f0;
   --surface: #ffffff;
-  --fg: #0f172a;
-  --muted: #5b6474;
-  --line: #e3e6eb;
-  --chip: #eef1f5;
-  --accent: #2563eb;
-  --accent-fg: #ffffff;
+  --fg: #16161a;
+  --muted: #5f5c55;
+  --line: #e4e1d9;
+  --chip: #efece5;
+  --accent: #16161a;
+  --accent-fg: #f7f5f0;
+  --font: Geist, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   color-scheme: light;
 }
 
 :root[data-theme='dark'] {
-  --bg: #0b0e14;
-  --surface: #131822;
-  --fg: #e6e9ef;
-  --muted: #9aa3b2;
-  --line: #232a36;
-  --chip: #1c2230;
-  --accent: #60a5fa;
-  --accent-fg: #0b0e14;
+  --bg: #0f0f11;
+  --surface: #151518;
+  --fg: #ebe8e1;
+  --muted: #a09d96;
+  --line: #26262b;
+  --chip: #1b1b1f;
+  --accent: #ebe8e1;
+  --accent-fg: #0f0f11;
   color-scheme: dark;
 }
 
 /* Palette in the demo colors: overriding the variables on .rr-cp is enough */
 .rr-cp {
-  --rr-cp-accent: var(--accent);
-  --rr-cp-highlight: var(--accent);
+  --rr-cp-accent: var(--demo-cp-accent, var(--accent));
+  --rr-cp-highlight: var(--demo-cp-accent, var(--accent));
+  --rr-cp-width: var(--demo-cp-width, 640px);
+  --rr-cp-radius: var(--demo-cp-radius, 12px);
   --rr-cp-font: inherit;
 }
 
 .rr-cp[data-theme='dark'] {
-  --rr-cp-bg: #131822;
-  --rr-cp-border: #232a36;
-  --rr-cp-item-active-bg: #1c2230;
-  --rr-cp-kbd-bg: #1c2230;
+  --rr-cp-bg: #151518;
+  --rr-cp-border: #34343b;
+  --rr-cp-item-active-bg: #1b1b1f;
+  --rr-cp-kbd-bg: #1b1b1f;
 }
 
 /* Compact density with the spacing variables: they also work set on :root (here html.compact) */
@@ -66,12 +70,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
-  font:
-    16px/1.55 system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font: 400 16px/1.6 var(--font);
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
@@ -81,19 +81,20 @@ a {
 h1 {
   margin: 0 0 10px;
   font-size: clamp(1.7rem, 4vw, 2.4rem);
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
 }
 
 h2 {
   margin: 0 0 10px;
   font-size: 1.1rem;
+  letter-spacing: -0.02em;
 }
 
 code,
 pre,
 kbd {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: var(--mono);
 }
 
 code {
@@ -154,7 +155,7 @@ button.primary {
 
 button.primary kbd {
   border-color: transparent;
-  background: rgb(0 0 0 / 0.22);
+  background: rgb(128 128 128 / 0.28);
   color: inherit;
 }
 
@@ -168,7 +169,7 @@ button.ghost {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--fg);
   outline-offset: 2px;
 }
 
@@ -178,9 +179,10 @@ button.ghost {
 
 .eyebrow {
   margin: 0 0 6px;
-  color: var(--accent);
-  font-size: 0.8125rem;
-  font-weight: 600;
+  color: var(--muted);
+  font: 500 12px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .lead {
@@ -344,4 +346,114 @@ tbody tr td {
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.note {
+  max-width: 760px;
+  margin-top: 28px;
+  padding: 16px 20px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.note p {
+  margin: 0 0 8px;
+}
+
+.note .eyebrow {
+  margin-bottom: 4px;
+}
+
+.note pre {
+  margin-top: 10px;
+}
+
+.banner {
+  max-width: 760px;
+  margin: 0 0 16px;
+}
+
+.result {
+  margin-top: 16px;
+}
+
+.result p {
+  margin: 0;
+}
+
+.result .eyebrow {
+  margin-bottom: 4px;
+}
+
+.card pre {
+  margin-top: 12px;
+}
+
+.controls {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.controls fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.controls legend {
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field span {
+  display: flex;
+  justify-content: space-between;
+}
+
+.field output {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+}
+
+.field input {
+  accent-color: var(--accent);
+}
+
+.controls .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.swatches {
+  display: flex;
+  gap: 10px;
+}
+
+.swatch {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: var(--swatch);
+}
+
+.swatch.on {
+  border-color: var(--fg);
+  box-shadow: 0 0 0 2px var(--bg) inset;
+}
+
+.card pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
