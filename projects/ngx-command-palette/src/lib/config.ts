@@ -321,6 +321,11 @@ export function provideCommandPalette(options: CommandPaletteOptions = {}): Envi
   ]);
 }
 
+/** Reports an error thrown (or a promise rejected) while running a command chosen by the user. */
+export function reportRunError(error: unknown): void {
+  console.error('ngx-command-palette: running the command failed', error);
+}
+
 /**
  * Runs a user callback so that an error it throws is reported but never breaks the palette.
  * Promise rejections of async callbacks are reported too.

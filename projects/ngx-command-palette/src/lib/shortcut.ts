@@ -51,6 +51,15 @@ export function parseShortcut(shortcut: string): ParsedShortcut {
   return result;
 }
 
+/** Like {@link parseShortcut}, but returns `null` instead of throwing for an invalid shortcut. */
+export function tryParseShortcut(shortcut: string): ParsedShortcut | null {
+  try {
+    return parseShortcut(shortcut);
+  } catch {
+    return null;
+  }
+}
+
 /** True on macOS / iOS, where `mod` maps to the ⌘ key. */
 export function isApplePlatform(nav: Navigator | undefined = globalThis.navigator): boolean {
   if (!nav) return false;

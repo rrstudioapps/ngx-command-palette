@@ -3,6 +3,24 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com) and the project uses [Semantic Versioning](https://semver.org).
 
+## [1.1.4] - 2026-11-26
+
+### Fixed
+
+- Opening a sub-palette no longer does nothing after an open parent was removed or replaced; when every open parent is removed, the top level (recents, async providers) is back.
+- A `hotkey` on a command with `prompt` opens the palette on its value step (before, nothing happened).
+- An invalid `hotkey` (e.g. `'ctrl+'`) is logged once and ignored, instead of breaking every shortcut and the rendering of the list.
+- With `shortcutInFields: false`, the palette shortcut closes the open palette again, as documented.
+- `routes`: a child with an empty path is labelled after its parent (`/settings` is "Settings", not "Home"), and routes with a custom `matcher` are skipped with everything below them, like parameter routes.
+- `routes`: a `filter` or `describe` callback that throws is logged and no longer stops the palette from opening.
+- An error or rejected promise from a command run by Enter, click or hotkey is logged with a library message instead of becoming an unhandled rejection.
+- Async results, or children of a sub-palette, with the same `id` are listed once (the last wins), so keyboard navigation reaches every row.
+- A `$` in a command label (e.g. `$$`, `$&`) is announced as written by screen readers.
+
+### Changed
+
+- The component stylesheet is a few bytes smaller (the current path step shares the rule of the path buttons), back under the 8 kB style budget. No visual change and no change to the CSS variables.
+
 ## [1.1.3] - 2026-11-25
 
 ### Added

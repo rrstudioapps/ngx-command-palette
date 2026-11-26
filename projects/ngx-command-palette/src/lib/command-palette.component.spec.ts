@@ -179,6 +179,50 @@ describe('CommandPaletteComponent', () => {
     expect(service.isOpen()).toBe(false);
   });
 
+  it('reports a command that fails on Enter or click instead of an unhandled rejection', async () => {
+    await setup();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    service.register([{ id: 'x', label: 'Broken', run: () => Promise.reject(new Error('x')) }]);
+    service.open('broken');
+    await fixture.whenStable();
+    keydown(input(), 'Enter');
+    await fixture.whenStable();
+    expect(error).toHaveBeenCalledWith(
+      'ngx-command-palette: running the command failed',
+      expect.any(Error),
+    );
+    error.mockRestore();
+  });
+
+  it('shows no keys for an invalid hotkey instead of failing to render', async () => {
+    await setup();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    service.register([{ id: 'x', label: 'Xray', hotkey: 'ctrl+', run: () => undefined }]);
+    service.open('xray');
+    await fixture.whenStable();
+    expect(options().map((o) => o.textContent!.trim())).toEqual(['Xray']);
+    error.mockRestore();
+  });
+
+  it('keeps `$` patterns of labels as they are in the announcement', async () => {
+    await setup();
+    service.register([
+      { id: 'p', label: "Price in $$ and $'", prompt: 'Amount', run: () => undefined },
+      { id: 'q', label: 'Plan $&', children: [{ id: 'q1', label: 'One', run: () => undefined }] },
+    ]);
+    const status = () => q('[aria-live]')!.textContent!.trim();
+    service.open('price');
+    await fixture.whenStable();
+    keydown(input(), 'Enter');
+    await fixture.whenStable();
+    expect(status()).toContain("Price in $$ and $'");
+    service.open('plan');
+    await fixture.whenStable();
+    keydown(input(), 'Enter');
+    await fixture.whenStable();
+    expect(status()).toContain('Plan $&');
+  });
+
   it('filters while typing, highlights matches and resets the active option', async () => {
     await setup();
     await open();
@@ -547,6 +591,17 @@ describe('CommandPaletteComponent', () => {
       await fixture.whenStable();
       keydown(input(), 'Escape');
       expect(service.isOpen()).toBe(false);
+    });
+
+    it('shortcutInFields: false still closes the open palette with Ctrl+K, "/" types', async () => {
+      await create({ shortcutInFields: false, shortcut: ['mod+k', '/'] });
+      service.open();
+      await fixture.whenStable();
+      keydown(input(), '/');
+      expect(service.isOpen()).toBe(true);
+      const event = keydown(input(), 'k', { ctrlKey: true });
+      expect(service.isOpen()).toBe(false);
+      expect(event.defaultPrevented).toBe(true);
     });
 
     it('shortcutEnabled: false does not open and does not swallow the key', async () => {

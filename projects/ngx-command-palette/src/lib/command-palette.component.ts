@@ -21,9 +21,15 @@ import {
 
 import type { Command, CommandResult } from './command.model';
 import { CommandPaletteService } from './command-palette.service';
-import { COMMAND_PALETTE_CONFIG, type CommandPaletteTheme } from './config';
+import { COMMAND_PALETTE_CONFIG, reportRunError, type CommandPaletteTheme } from './config';
 import { keyToAction, moveIndex } from './list-navigation';
-import { formatShortcut, isApplePlatform, matchesShortcut, parseShortcut } from './shortcut';
+import {
+  formatShortcut,
+  isApplePlatform,
+  matchesShortcut,
+  parseShortcut,
+  tryParseShortcut,
+} from './shortcut';
 import { CommandEmptyTemplate, CommandItemTemplate } from './templates.directive';
 
 let nextId = 0;
@@ -81,7 +87,9 @@ export class CommandPaletteComponent {
   protected keysOf(command: Command): readonly string[] {
     if (command.shortcut?.length) return command.shortcut;
     const hotkey = typeof command.hotkey === 'string' ? command.hotkey : command.hotkey?.[0];
-    return hotkey ? [formatShortcut(parseShortcut(hotkey), this.apple)] : [];
+    // An invalid hotkey is reported by the service and shows no keys here
+    const parsed = hotkey ? tryParseShortcut(hotkey) : null;
+    return parsed ? [formatShortcut(parsed, this.apple)] : [];
   }
 
   private readonly prefersDark = signal(false);
@@ -124,7 +132,8 @@ export class CommandPaletteComponent {
     if (count === 0) return this.labels().empty;
     const path = this.service.path();
     const prompt = this.service.prompt();
-    if (prompt) return this.labels().prompt.replace('{name}', prompt.label);
+    // Replacement functions: a `$` in a label must not be read as a replacement pattern
+    if (prompt) return this.labels().prompt.replace('{name}', () => prompt.label);
     const { level, levelOne, results, resultsOne } = this.labels();
     const template = path.length
       ? count === 1
@@ -134,8 +143,8 @@ export class CommandPaletteComponent {
         ? (resultsOne ?? results)
         : results;
     return template
-      .replace('{name}', path[path.length - 1]?.label ?? '')
-      .replace('{count}', String(count));
+      .replace('{name}', () => path[path.length - 1]?.label ?? '')
+      .replace('{count}', () => String(count));
   });
   /** Sub-palettes opened plus, last, the command waiting for a value. Shown as the path above the search. */
   protected readonly crumbs = computed<readonly Command[]>(() => {
@@ -253,7 +262,7 @@ export class CommandPaletteComponent {
         return;
       case 'select': {
         const item = items[this.activeIndex()];
-        if (item) void this.service.execute(item.command);
+        if (item) this.service.execute(item.command).catch(reportRunError);
         return;
       }
       default: {
@@ -272,7 +281,7 @@ export class CommandPaletteComponent {
   }
 
   protected onSelect(item: CommandResult): void {
-    void this.service.execute(item.command);
+    this.service.execute(item.command).catch(reportRunError);
   }
 
   protected onOverlayDown(event: MouseEvent): void {
@@ -285,6 +294,9 @@ export class CommandPaletteComponent {
     // Command hotkeys need a modifier. Alt alone is ignored in a text field: on macOS it types
     // special characters (Alt+T is "†"), so it must not be swallowed there. Ctrl and ⌘ never type.
     const typing = isEditable(event.target);
+    // The palette's own search field: with Ctrl/⌘/Alt the shortcut still closes the palette
+    const inPalette =
+      event.target instanceof Node && !!this.dialog()?.nativeElement.contains(event.target);
     const fieldsAllowed = this.config.shortcutInFields || !typing;
     const hotkeyAllowed =
       fieldsAllowed && (event.ctrlKey || event.metaKey || (event.altKey && !typing));
@@ -296,7 +308,8 @@ export class CommandPaletteComponent {
     // `shortcutInFields: false` the ones with Ctrl/⌘ do not either
     const hit = this.shortcuts.some(
       (s) =>
-        (!typing || (this.config.shortcutInFields && (s.mod || s.ctrl || s.meta || s.alt))) &&
+        (!typing ||
+          ((this.config.shortcutInFields || inPalette) && (s.mod || s.ctrl || s.meta || s.alt))) &&
         matchesShortcut(event, s, this.apple),
     );
     // `shortcutEnabled` only stops it from opening: an open palette can always be closed

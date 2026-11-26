@@ -46,6 +46,39 @@ describe('routeCommands', () => {
     ).toEqual(['/new']);
   });
 
+  it('skips routes with a custom matcher and what is below them', () => {
+    const matcher = () => null;
+    expect(
+      ids([
+        { matcher, component: Page },
+        { path: 'blog', component: Page, children: [{ matcher, component: Page }] },
+        { matcher, children: [{ path: 'edit', component: Page }] },
+      ]),
+    ).toEqual(['/blog']);
+  });
+
+  it('labels an empty-path child after its parent, not "Home"', () => {
+    const commands = routeCommands(
+      [
+        {
+          path: 'settings',
+          children: [
+            { path: '', component: Page },
+            { path: 'profile', component: Page },
+          ],
+        },
+        { path: '', component: Page },
+      ],
+      {},
+      'Pages',
+    );
+    expect(commands.map((c) => [c.route, c.label])).toEqual([
+      ['/settings', 'Settings'],
+      ['/settings/profile', 'Profile'],
+      ['/', 'Home'],
+    ]);
+  });
+
   it('descends into a layout without listing it', () => {
     expect(
       ids([{ path: '', component: Page, children: [{ path: 'home', component: Page }] }]),
@@ -151,6 +184,30 @@ describe('routes option', () => {
     TestBed.inject(Router).resetConfig([{ path: 'new', component: Page }]);
     service.open();
     expect(service.commands().map((c) => c.route)).toEqual(['/new']);
+  });
+
+  it('still opens when filter or describe throws, keeping the previous commands', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    let fail = false;
+    const service = setup(
+      {
+        routes: {
+          describe: () => {
+            if (fail) throw new Error('boom');
+            return {};
+          },
+        },
+      },
+      routes,
+    );
+    service.open();
+    service.close();
+    fail = true;
+    expect(() => service.open()).not.toThrow();
+    expect(service.isOpen()).toBe(true);
+    expect(service.commands().map((c) => c.label)).toEqual(['Home page', 'About']);
+    expect(error).toHaveBeenCalledTimes(1);
+    error.mockRestore();
   });
 
   it('calls filter and describe in an injection context', () => {

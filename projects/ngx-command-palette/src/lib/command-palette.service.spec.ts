@@ -366,6 +366,64 @@ describe('CommandPaletteService', () => {
       expect(labels(service)).toEqual([['Commands', ['Dark']]]);
     });
 
+    it('opens a parent after an open one was removed, from the live path', async () => {
+      const service = setup();
+      const commands = signal(tree());
+      service.register(commands);
+      service.open();
+      await service.execute(service.commands()[0]);
+      await service.execute(service.commands()[0].children![2]);
+      expect(ids(service)).toEqual(['theme', 'colors']);
+      // "Colors" disappears while open: the path shrinks to "Theme"
+      commands.set([
+        {
+          id: 'theme',
+          label: 'Theme',
+          children: [
+            { id: 'fonts', label: 'Fonts', children: [{ id: 'mono', label: 'Mono', run: noop }] },
+          ],
+        },
+      ]);
+      expect(ids(service)).toEqual(['theme']);
+      await service.execute(service.commands()[0].children![0]);
+      expect(ids(service)).toEqual(['theme', 'fonts']);
+      expect(labels(service)).toEqual([['Commands', ['Mono']]]);
+    });
+
+    it('is back at the top level (recents, providers) when every open parent is removed', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      const commands = signal(tree());
+      service.register(commands);
+      const search = vi.fn(async () => [{ id: 'c', label: 'Customer', route: '/c' } as Command]);
+      service.registerProvider({ id: 'customers', group: 'Customers', search });
+      service.open();
+      await service.execute(service.commands()[0]);
+      commands.set([{ id: 'home', label: 'Home', route: '/' }]);
+      expect(ids(service)).toEqual([]);
+      service.setQuery('c');
+      await vi.advanceTimersByTimeAsync(100);
+      expect(search).toHaveBeenCalledTimes(1);
+      expect(labels(service)).toEqual([['Customers', ['Customer']]]);
+    });
+
+    it('lists children with the same id once (the last wins)', async () => {
+      const service = setup();
+      service.register([
+        {
+          id: 'p',
+          label: 'P',
+          children: [
+            { id: 'x', label: 'First', run: noop },
+            { id: 'x', label: 'Second', run: noop },
+          ],
+        },
+      ]);
+      service.open();
+      await service.execute(service.commands()[0]);
+      expect(labels(service)).toEqual([['Commands', ['Second']]]);
+    });
+
     it('goes back one or more levels and clears the search', async () => {
       const service = setup();
       service.register(tree());
@@ -765,6 +823,20 @@ describe('CommandPaletteService', () => {
       expect(labels(service)).toEqual([['Customers', ['Customer ad']]]);
     });
 
+    it('lists results with the same id once (the last wins)', async () => {
+      vi.useFakeTimers();
+      const service = setup();
+      service.registerProvider(
+        provider(async () => [
+          { id: 'c', label: 'Acme EU', route: '/c/1' },
+          { id: 'c', label: 'Acme US', route: '/c/2' },
+        ]),
+      );
+      service.open('acme');
+      await vi.advanceTimersByTimeAsync(100);
+      expect(labels(service)).toEqual([['Customers', ['Acme US']]]);
+    });
+
     it('respects minQueryLength and its own debounce', async () => {
       vi.useFakeTimers();
       const service = setup();
@@ -965,6 +1037,51 @@ describe('CommandPaletteService', () => {
       service.open();
       expect(service.runHotkey(key({ key: 's', ctrlKey: true }), false)).toBe(false);
       expect(run).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens the palette on the value step of a command with a prompt', async () => {
+      const run = vi.fn();
+      const service = setup();
+      service.register([
+        { id: 'rename', label: 'Rename', prompt: 'New name', hotkey: 'mod+r', run },
+      ]);
+      expect(service.runHotkey(key({ key: 'r', ctrlKey: true }), false)).toBe(true);
+      expect(service.isOpen()).toBe(true);
+      expect(service.prompt()?.id).toBe('rename');
+      service.setQuery('Report');
+      await service.execute(service.prompt()!);
+      expect(run).toHaveBeenCalledWith({ query: 'Report', value: 'Report' });
+    });
+
+    it('ignores an invalid hotkey, logging it once, and keeps the others working', () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const run = vi.fn();
+      const service = setup();
+      service.register([
+        { id: 'bad', label: 'Bad', hotkey: 'ctrl+', run },
+        { id: 'good', label: 'Good', hotkey: ['shift+', 'ctrl+g'], run },
+      ]);
+      expect(service.runHotkey(key({ key: 'x', ctrlKey: true }), false)).toBe(false);
+      expect(service.runHotkey(key({ key: 'g', ctrlKey: true }), false)).toBe(true);
+      expect(run).toHaveBeenCalledTimes(1);
+      expect(error).toHaveBeenCalledTimes(2);
+      error.mockRestore();
+    });
+
+    it('reports an error of a command run by hotkey', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const service = setup();
+      service.register([
+        { id: 'a', label: 'A', hotkey: 'ctrl+a', run: () => Promise.reject(new Error('x')) },
+      ]);
+      service.runHotkey(key({ key: 'a', ctrlKey: true }), false);
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(error).toHaveBeenCalledWith(
+        'ngx-command-palette: running the command failed',
+        expect.any(Error),
+      );
+      error.mockRestore();
     });
 
     it('ignores sub-palette parents', () => {

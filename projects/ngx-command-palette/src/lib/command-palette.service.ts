@@ -29,13 +29,14 @@ import type {
 import {
   COMMAND_PALETTE_CONFIG,
   currentLabels,
+  reportRunError,
   safeCall,
   type CommandPaletteCloseReason,
   type CommandPaletteRecentOptions,
   type CommandPrefix,
 } from './config';
 import { fuzzyMatch, highlightSegments } from './fuzzy';
-import { matchesShortcut, parseShortcut } from './shortcut';
+import { matchesShortcut, tryParseShortcut, type ParsedShortcut } from './shortcut';
 import { routeCommands } from './route-commands';
 import { RecentStore, type RecentEntry } from './recent-store';
 
@@ -131,7 +132,8 @@ export class CommandPaletteService {
   /** The commands of the level being shown: the top level or the children of the last parent. */
   private readonly levelCommands: Signal<readonly Command[]> = computed(() => {
     const path = this.path();
-    return path.length ? path[path.length - 1].children : this.commands();
+    // Children are deduplicated like registered commands: the last one with an id wins
+    return path.length ? uniqueById(path[path.length - 1].children) : this.commands();
   });
 
   /** All registered (synchronous) commands. When two share an id, the last registered wins. */
@@ -166,10 +168,29 @@ export class CommandPaletteService {
     this.buildSections(this._query()),
   );
 
-  /** Leaf commands with a `hotkey`, not hidden. */
-  private readonly hotkeyCommands = computed(() =>
-    descendants(this.commands()).filter((c) => c.hotkey && !isParent(c)),
-  );
+  /** Hotkeys reported as invalid, so that each one is logged only once. */
+  private readonly invalidHotkeys = new Set<string>();
+
+  /** Leaf commands with a `hotkey`, not hidden, with their parsed keys (invalid ones are left out). */
+  private readonly hotkeyCommands = computed(() => {
+    const bound: { command: Command; keys: ParsedShortcut[] }[] = [];
+    for (const command of descendants(this.commands())) {
+      if (!command.hotkey || isParent(command)) continue;
+      const keys: ParsedShortcut[] = [];
+      for (const hotkey of typeof command.hotkey === 'string' ? [command.hotkey] : command.hotkey) {
+        const parsed = tryParseShortcut(hotkey);
+        if (parsed) keys.push(parsed);
+        else if (!this.invalidHotkeys.has(hotkey)) {
+          this.invalidHotkeys.add(hotkey);
+          console.error(
+            `ngx-command-palette: invalid hotkey "${hotkey}" on command "${command.id}", ignored`,
+          );
+        }
+      }
+      if (keys.length) bound.push({ command, keys });
+    }
+    return bound;
+  });
 
   /**
    * Runs the command bound to the key event, if any (called by the component for every keydown).
@@ -177,11 +198,12 @@ export class CommandPaletteService {
    */
   runHotkey(event: KeyboardEvent, apple: boolean): boolean {
     if (this._isOpen()) return false;
-    for (const command of this.hotkeyCommands()) {
-      const keys = typeof command.hotkey === 'string' ? [command.hotkey] : (command.hotkey ?? []);
-      if (!keys.some((k) => matchesShortcut(event, parseShortcut(k), apple))) continue;
+    for (const { command, keys } of this.hotkeyCommands()) {
+      if (!keys.some((k) => matchesShortcut(event, k, apple))) continue;
       if (command.disabled) return false;
-      void this.execute(command);
+      // A command asking for a value opens the palette on its value step
+      if (command.prompt !== undefined) this.open();
+      this.execute(command).catch(reportRunError);
       return true;
     }
     return false;
@@ -215,9 +237,17 @@ export class CommandPaletteService {
     const router = this.router;
     const options = option === true ? {} : option;
     const group = this.labels().routesGroup;
-    this.routeSource.set(
-      runInInjectionContext(this.injector, () => routeCommands(router.config, options, group)),
-    );
+    try {
+      this.routeSource.set(
+        runInInjectionContext(this.injector, () => routeCommands(router.config, options, group)),
+      );
+    } catch (error) {
+      // A throwing filter/describe must not stop the palette from opening: keep the previous commands
+      console.error(
+        'ngx-command-palette: building the commands of the routes option failed',
+        error,
+      );
+    }
   }
 
   /** Closes the palette, cancels pending searches and restores the focus. */
@@ -305,7 +335,7 @@ export class CommandPaletteService {
   /** Registers an async provider. Same lifetime rules as {@link register}. */
   registerProvider(provider: CommandProvider, destroyRef?: DestroyRef): () => void {
     this.providers.update((list) => [...list.filter((p) => p.id !== provider.id), provider]);
-    if (this._isOpen() && !this.pathIds().length && !this.promptCommand())
+    if (this._isOpen() && !this.path().length && !this.promptCommand())
       this.scheduleProvider(provider, this._query());
     const remove = () => {
       if (!this.providers().includes(provider)) return;
@@ -330,7 +360,8 @@ export class CommandPaletteService {
       // Providers search the top level only: drop their requests and results while inside a sub-palette
       this.cancelAll();
       this.providerState.set(new Map());
-      this.pathIds.update((ids) => [...ids, command.id]);
+      // From the live path: ids of parents removed meanwhile must not stay in front of the new one
+      this.pathIds.set([...this.path().map((c) => c.id), command.id]);
       this.setQuery('');
       return;
     }
@@ -414,7 +445,7 @@ export class CommandPaletteService {
     };
     const sections: CommandSection[] = [];
 
-    const topLevel = !this.pathIds().length;
+    const topLevel = !this.path().length;
     if (!query) {
       const pinned = prefix
         ? []
@@ -461,7 +492,7 @@ export class CommandPaletteService {
         continue;
       const state = states.get(provider.id);
       if (!state?.items.length) continue;
-      const items = state.items
+      const items = uniqueById(state.items)
         .filter((command) => !isHidden(command))
         .map((command) => {
           const match = query ? fuzzyMatch(query, command.label) : null;
@@ -518,7 +549,7 @@ export class CommandPaletteService {
   }
 
   private scheduleProviders(): void {
-    if (this.pathIds().length || this.promptCommand()) return;
+    if (this.path().length || this.promptCommand()) return;
     const query = this._query();
     for (const provider of this.providers()) this.scheduleProvider(provider, query);
   }
@@ -609,6 +640,16 @@ function inPrefix(command: Command, prefix: CommandPrefix, defaultGroup: string)
   if (prefix.kind === 'route') return command.route !== undefined;
   if (prefix.kind === 'action') return typeof command.run === 'function';
   return true;
+}
+
+/** The commands with duplicate ids removed: the last one with an id wins, in its own position. */
+function uniqueById(commands: readonly Command[]): readonly Command[] {
+  const byId = new Map<string, Command>();
+  for (const command of commands) {
+    byId.delete(command.id);
+    byId.set(command.id, command);
+  }
+  return byId.size === commands.length ? commands : [...byId.values()];
 }
 
 function isPinned(command: Command): boolean {

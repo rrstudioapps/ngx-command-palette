@@ -9,8 +9,8 @@ import type { CommandPaletteRouteInfo, CommandPaletteRoutesOptions } from './con
 /**
  * Builds navigation commands from a router configuration. Pure: no router, no injection context.
  *
- * Skipped: redirects, wildcards, secondary outlets, paths with a parameter (`:id`) and everything
- * below them, and routes with `data.commandPalette: false`. A route without a path that only wraps
+ * Skipped: redirects, wildcards, secondary outlets, paths with a parameter (`:id`) or a custom
+ * `matcher` and everything below them, and routes with `data.commandPalette: false`. A route without a path that only wraps
  * children (a layout) gives no command of its own, but its children are visited. Routes behind
  * `loadChildren` that are not loaded yet are not visible: only the route that owns them is listed.
  */
@@ -32,7 +32,8 @@ function visit(
   found: Map<string, RouteCommand>,
 ): void {
   for (const route of routes) {
-    if (route.redirectTo !== undefined || route.outlet) continue;
+    // A custom matcher has no fixed URL, like a parameter: skip it and everything below it
+    if (route.redirectTo !== undefined || route.outlet || route.matcher) continue;
     const path = route.path ?? '';
     if (path === '**' || path.split('/').some((segment) => segment.startsWith(':'))) continue;
 
@@ -47,7 +48,7 @@ function visit(
 
     if (!isLayout && !isWrapper && options.filter?.(route, url) !== false) {
       const base: CommandPaletteRouteInfo = {
-        label: title ?? labelFromPath(path),
+        label: title ?? labelFromPath(url),
         ...data,
       };
       const described = options.describe ? options.describe(route, url) : {};
@@ -77,7 +78,7 @@ function joinUrl(parent: string, path: string): string {
   return joined.startsWith('/') ? joined : `/${joined}`;
 }
 
-/** `user-settings/profile` → `Profile`; an empty path (the home route) → `Home`. */
+/** `/user-settings/profile` → `Profile`; the root URL (the home route) → `Home`. */
 function labelFromPath(path: string): string {
   const last = path.split('/').filter(Boolean).pop();
   if (!last) return 'Home';
